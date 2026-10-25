@@ -12,6 +12,7 @@
     --paper: #F6F6F2; --tape: #161616; --paper-ink: #1E2222;
     --w-pwm: #D97706; --w-in1: #16A34A; --w-in2: #2563EB; --w-in3: #7C3AED; --w-in4: #0891B2;
     --w-pwr: #DC2626; --w-gnd: #141919; --w-sig: #A16207; --w-mot: #56615E;
+    --code-bg: #F8FAF9; --c-com: #6E7A77; --c-kw: #8A2BB0; --c-num: #B4530A; --c-str: #0F7B3F; --c-fn: #1D5FB8; --c-cst: #C62029; --c-def: #0E7490;
     --font-display: "Archivo", "Arial Narrow", system-ui, sans-serif;
     --font-body: "Atkinson Hyperlegible Next", "Segoe UI", system-ui, sans-serif;
     --font-mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
@@ -22,6 +23,7 @@
       --accent: #F0474F; --accent-soft: rgba(240, 71, 79, .16); --on-accent: #FFFFFF; --viewer: #0B0F10;
       --w-pwm: #F59E0B; --w-in1: #22C55E; --w-in2: #60A5FA; --w-in3: #A78BFA; --w-in4: #22D3EE;
       --w-pwr: #F87171; --w-gnd: #E5EBE8; --w-sig: #EAB308; --w-mot: #98A4A0;
+      --code-bg: #0C1011; --c-com: #7F8C89; --c-kw: #D2A8FF; --c-num: #F0A35E; --c-str: #7EE2A8; --c-fn: #79B8FF; --c-cst: #FF7B80; --c-def: #5FD4E8;
       color-scheme: dark;
     }
   }
@@ -30,6 +32,7 @@
     --accent: #F0474F; --accent-soft: rgba(240, 71, 79, .16); --on-accent: #FFFFFF; --viewer: #0B0F10;
     --w-pwm: #F59E0B; --w-in1: #22C55E; --w-in2: #60A5FA; --w-in3: #A78BFA; --w-in4: #22D3EE;
     --w-pwr: #F87171; --w-gnd: #E5EBE8; --w-sig: #EAB308; --w-mot: #98A4A0;
+      --code-bg: #0C1011; --c-com: #7F8C89; --c-kw: #D2A8FF; --c-num: #F0A35E; --c-str: #7EE2A8; --c-fn: #79B8FF; --c-cst: #FF7B80; --c-def: #5FD4E8;
     color-scheme: dark;
   }
 
@@ -238,6 +241,85 @@
     justify-self: start; background: none; border: 0; padding: 0; color: var(--accent); cursor: pointer;
     font: 600 .84rem var(--font-body); text-decoration: underline; text-underline-offset: 3px;
   }
+  .codewrap { display: grid; grid-template-columns: 340px minmax(0, 1fr); gap: 20px; align-items: start; }
+  .cfg { display: grid; gap: 12px; min-width: 0; }
+  .grp { margin: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px 14px; display: grid; gap: 12px; min-width: 0; }
+  .grp legend { float: left; width: 100%; padding: 0; font: 600 .72rem/1.3 var(--font-mono); text-transform: uppercase; letter-spacing: .09em; color: var(--muted); }
+  .grp legend + * { clear: both; }
+  .grp.adv summary { cursor: pointer; font-weight: 700; font-size: .92rem; }
+  .grp.adv summary span { font-weight: 400; font-size: .84rem; }
+  .grp.adv[open] summary { margin-bottom: 4px; }
+  .field { display: grid; gap: 6px; }
+  .field small { color: var(--muted); font-size: .78rem; line-height: 1.4; }
+  .fl { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .fl code, .sw code { font: 600 .8rem var(--font-mono); color: var(--fg); }
+  .numin {
+    width: 76px; font: 600 .86rem var(--font-mono); color: var(--accent); background: var(--sunken);
+    border: 1px solid var(--line); border-radius: 6px; padding: 4px 6px; text-align: right;
+  }
+  .numin.wide { width: 92px; }
+  .unit { display: inline-flex; align-items: center; gap: 6px; font: 500 .8rem var(--font-mono); color: var(--muted); }
+  .modes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+  .mode {
+    position: relative; display: grid; gap: 2px; border: 1px solid var(--line); border-radius: 10px;
+    padding: 8px 9px; cursor: pointer; font-size: .8rem; line-height: 1.3;
+  }
+  .mode input { position: absolute; opacity: 0; pointer-events: none; }
+  .mode b { font-size: .86rem; }
+  .mode span { color: var(--muted); }
+  .mode.on { border-color: var(--accent); background: var(--accent-soft); }
+  .mode:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .seg { display: flex; gap: 6px; flex-wrap: wrap; }
+  .seg .btn { flex: 1; font-size: .82rem; padding: .5rem .6rem; }
+  .sw { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; font-size: .88rem; line-height: 1.35; }
+  .sw input { margin-top: 2px; accent-color: var(--accent); width: 16px; height: 16px; flex: none; }
+  .pins { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px; }
+  .pin { display: grid; gap: 3px; font-size: .78rem; color: var(--muted); }
+  .pin select {
+    font: 600 .86rem var(--font-mono); color: var(--fg); background: var(--sunken); border: 1px solid var(--line);
+    border-radius: 6px; padding: 5px 6px;
+  }
+
+  .codebox {
+    position: sticky; top: calc(env(safe-area-inset-top, 0px) + 12px); min-width: 0; display: grid;
+    background: var(--code-bg); border: 1px solid var(--line); border-radius: 12px; overflow: hidden;
+  }
+  .codebar { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 10px 12px; border-bottom: 1px solid var(--line); background: var(--surface); }
+  .fname { font: 600 .84rem var(--font-mono); }
+  .chip { font: 600 .72rem var(--font-mono); padding: 3px 8px; border-radius: 999px; background: var(--sunken); color: var(--muted); }
+  .chip.on { background: var(--accent-soft); color: var(--accent); }
+  .grow { flex: 1; }
+  .issues { list-style: none; margin: 0; padding: 10px 14px; display: grid; gap: 6px; font-size: .84rem; border-bottom: 1px solid var(--line); background: var(--surface); }
+  .issues li { padding-left: 12px; border-left: 3px solid var(--line); }
+  .issues li.err { border-left-color: var(--accent); }
+  .issues li.err b { color: var(--accent); }
+  .issues li.warn { border-left-color: var(--w-pwm); }
+  .issues li.info { color: var(--muted); }
+  .code {
+    position: relative; margin: 0; overflow: auto; max-height: min(74vh, 720px); padding: 10px 0;
+    font: 12.5px/1.65 var(--font-mono); color: var(--fg); tab-size: 2; outline: none;
+  }
+  .code:focus-visible { box-shadow: inset 0 0 0 2px var(--accent); }
+  .rows { display: inline-block; min-width: 100%; }
+  .r { display: block; white-space: pre; padding-right: 16px; }
+  .lno { display: inline-block; width: 3.4em; padding-right: 1.1em; text-align: right; color: var(--muted); opacity: .6; user-select: none; }
+  .r.chg { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(--accent); }
+  .r.flash { animation: flash .9s ease-out; }
+  @keyframes flash { from { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(--accent), inset 0 0 0 999px var(--accent-soft); } }
+  .c-com { color: var(--c-com); font-style: italic; }
+  .c-kw { color: var(--c-kw); }
+  .c-num { color: var(--c-num); }
+  .c-str { color: var(--c-str); }
+  .c-fn { color: var(--c-fn); }
+  .c-cst { color: var(--c-cst); font-weight: 600; }
+  .c-def { color: var(--c-def); font-weight: 600; }
+  .copy-status { margin: 0; padding: 8px 14px 10px; font-size: .82rem; color: var(--muted); border-top: 1px solid var(--line); background: var(--surface); }
+  .upload { margin: 0; padding-left: 1.3em; display: grid; gap: 6px; max-width: 75ch; font-size: .92rem; }
+  @media (max-width: 920px) {
+    .codewrap { grid-template-columns: minmax(0, 1fr); }
+    .codebox { position: static; }
+  }
+  @media (prefers-reduced-motion: reduce) { .r.flash { animation: none; } }
   @media (max-width: 920px) {
     .stage { grid-template-columns: minmax(0, 1fr); }
     .panel { border-left: 0; border-top: 1px solid var(--line); }
@@ -298,17 +380,17 @@
         <label class="check" for="slow"><input type="checkbox" id="slow"> Ağır çekim (4 kat yavaş)</label>
         <div class="ctl">
           <label for="k-taban">TABAN_HIZ <output id="o-taban">140</output></label>
-          <input type="range" id="k-taban" min="60" max="255" step="5" value="140">
+          <input type="range" id="k-taban" min="0" max="255" step="1" value="140">
           <small>Çizgi ortadayken iki motorun hızı (0–255).</small>
         </div>
         <div class="ctl">
           <label for="k-kp">KP <output id="o-kp">45</output></label>
-          <input type="range" id="k-kp" min="0" max="120" step="5" value="45">
+          <input type="range" id="k-kp" min="0" max="150" step="0.5" value="45">
           <small>Dönüş sertliği. Az gelirse virajda kaçar, çok gelirse düzde zikzak çizer.</small>
         </div>
         <div class="ctl">
           <label for="k-fren">VIRAJ_FRENI <output id="o-fren">10</output></label>
-          <input type="range" id="k-fren" min="0" max="30" step="1" value="10">
+          <input type="range" id="k-fren" min="0" max="40" step="1" value="10">
           <small>Çizgi ortadan kaydıkça iki motordan düşülen hız.</small>
         </div>
         <div class="laps">
@@ -316,7 +398,7 @@
           <div><span>Son tur</span><b id="lap-last">—</b></div>
           <div><span>En iyi</span><b id="lap-best">—</b></div>
         </div>
-        <p class="note">Simülasyon koddaki kuralları birebir uygular ama motorlar, zemin ve pil ideal kabul edilir. Gerçek robotta değerleri pistte deneyerek ayarla.</p>
+        <p class="note">Simülasyon koddaki kuralları birebir uygular ama motorlar, zemin ve pil ideal kabul edilir. Gerçek robotta değerleri pistte deneyerek ayarla. Buradaki ayarlar aşağıdaki Kod bölümüne de yazılır.</p>
       </div>
     </aside>
   </section>
@@ -720,6 +802,316 @@
       <li>GND'ler ortak olmalı. Arduino GND'si hem L298N'e hem sensör kartına gider.</li>
       <li>Motor akımı Arduino'nun VIN pininden geçer. Robotu bir yere sıkıştırıp tekerlekleri zorla durdurma.</li>
     </ul>
+  </section>
+
+  <section class="sec" id="kod" aria-labelledby="kod-h">
+    <div class="sec-head">
+      <p class="eyebrow">Arduino kodu · ayar menüsü</p>
+      <h2 id="kod-h">Kod</h2>
+      <p class="muted">Soldaki menüden ayarları değiştir; sağdaki kod anında güncellenir ve değişen satırlar işaretlenir. Hız ayarları yukarıdaki pist simülasyonuyla bağlı. Seçimlerin bu tarayıcıda saklanır.</p>
+    </div>
+    <div class="codewrap">
+      <form class="cfg" id="cfg" novalidate aria-label="Kod ayarları"></form>
+      <div class="codebox">
+        <div class="codebar">
+          <span class="fname">cizgi_izleyen.ino</span>
+          <span class="chip" id="chg-count">Varsayılan ayarlar</span>
+          <span class="grow"></span>
+          <button class="btn" type="button" id="cfg-reset">Varsayılana dön</button>
+          <button class="btn primary" type="button" id="copy">Kodu kopyala</button>
+        </div>
+        <ul class="issues" id="issues" hidden></ul>
+        <pre class="code" id="code" tabindex="0" aria-label="Arduino kodu"><div class="rows" id="code-rows"></div></pre>
+        <p class="copy-status" id="copy-status" aria-live="polite">Kodu kopyalayıp Arduino IDE'ye yapıştır.</p>
+      </div>
+    </div>
+    <ol class="upload">
+      <li><b>Kopyala.</b> "Kodu kopyala" düğmesine bas.</li>
+      <li><b>Yapıştır.</b> Arduino IDE'de Dosya → Yeni. İçindekileri sil, kodu yapıştır, <code>cizgi_izleyen</code> adıyla kaydet.</li>
+      <li><b>Kartı seç.</b> Araçlar → Kart: Arduino Uno. Port: kartın COM portu (CH340).</li>
+      <li><b>Yükle.</b> Sağ ok düğmesine bas. Motor testinden önce pili tak; USB motorları döndüremez.</li>
+    </ol>
+<script type="text/plain" id="ino-src">
+/*
+  ============================================================
+   ÇİZGİ İZLEYEN ROBOT
+  ============================================================
+   Kart    : Arduino UNO R3 (CH340)
+   Sürücü  : L298N çift motor sürücü
+   Sensör  : 4'lü kızılötesi çizgi sensörü (dijital çıkışlı)
+   Motor   : 2 x 6V 250 RPM redüktörlü motor
+   Pil     : 6 x AA (barrel jak Arduino'nun jakına takılır)
+
+   KABLOLAMA
+   ---------
+   L298N ENA  -> D5   (sol motor hızı, PWM)  * ENA jumper'ını çıkar!
+   L298N IN1  -> D7
+   L298N IN2  -> D8
+   L298N IN3  -> D9
+   L298N IN4  -> D10
+   L298N ENB  -> D6   (sağ motor hızı, PWM)  * ENB jumper'ını çıkar!
+   L298N OUT1/OUT2 -> SOL motor
+   L298N OUT3/OUT4 -> SAĞ motor
+   L298N 12V  -> Arduino VIN
+   L298N GND  -> Arduino GND   (ortak toprak, şart!)
+   L298N 5V   -> BOŞ BIRAK (5V jumper'ı takılı kalsın)
+
+   Sensör kartı OUT1 (en sol) -> A0
+   Sensör kartı OUT2          -> A1
+   Sensör kartı OUT3          -> A2
+   Sensör kartı OUT4 (en sağ) -> A3
+   Sensör kartı VCC -> 5V,  GND -> GND
+
+   (İsteğe bağlı) Başlat butonu: D2 ile GND arasına
+
+   "Sol" ve "sağ": robotun arkasından, gideceği yöne bakarken.
+
+   MODLAR (aşağıdaki MOD ayarını değiştir, tekrar yükle)
+   0 = YARIŞ        : robot çizgiyi izler
+   1 = SENSÖR TESTİ : Seri Monitör (9600) sensörleri yazar, motorlar dönmez
+   2 = MOTOR TESTİ  : tekerlekleri havaya kaldır, motorları sırayla dener
+                      (pil takılı olmalı, USB motorları döndüremez)
+  ============================================================
+*/
+
+// ===================== AYARLAR =====================
+
+const byte MOD = 0;  // 0 = yarış, 1 = sensör testi, 2 = motor testi
+
+// Sensör siyah çizginin üstündeyken pin ne okuyor?
+// Çoğu modülde siyah = HIGH. Sensör testinde ters görürsen LOW yap.
+const bool CIZGI_SEVIYESI = HIGH;
+
+// Hızlar (0-255 arası PWM değeri)
+const int TABAN_HIZ   = 140;  // çizgi tam ortadayken iki motorun hızı
+const int MAKS_HIZ    = 255;  // hiçbir motor bundan hızlı dönmez
+const int ARAMA_HIZI  = 150;  // çizgi kaybolunca yerinde dönme hızı
+const float KP        = 45;   // dönüş sertliği: hata başına hız farkı
+const int VIRAJ_FRENI = 10;   // çizgi ortadan kaydıkça taban hızdan düşülen
+
+// Bir motor ters dönüyorsa true yap (ya da o motorun iki kablosunu değiştir)
+const bool SOL_TERS = false;
+const bool SAG_TERS = false;
+
+// Süreler (milisaniye)
+const unsigned long BASLAMA_BEKLEME = 3000;  // güç verince bu kadar bekler
+const unsigned long TUM_SIYAH_DUR   = 400;   // 4 sensör bu kadar süre siyah görürse durur
+const unsigned long KAYIP_DUR       = 3000;  // çizgi bu kadar süre bulunamazsa durur
+
+const bool BUTON_KULLAN = false;  // true: D2'deki butona basınca başlar
+
+// ===================== PİNLER =====================
+
+const byte ENA = 5;
+const byte IN1 = 7;
+const byte IN2 = 8;
+const byte IN3 = 9;
+const byte IN4 = 10;
+const byte ENB = 6;
+const byte BUTON_PIN = 2;
+
+// Soldan sağa. Robot çizgiden kaçıyorsa sıra ters: {A3, A2, A1, A0} yap.
+const byte SENSOR_PIN[4] = {A0, A1, A2, A3};
+
+// Her sensörün konumu: en sol -3, en sağ +3.
+// Çizgiyi gören sensörlerin ortalaması = çizginin robota göre yeri (hata).
+const int AGIRLIK[4] = {-3, -1, 1, 3};
+
+// ===================== DEĞİŞKENLER =====================
+
+float sonHata = 0;                  // çizgi en son nerede görüldü
+unsigned long sonGorme = 0;         // çizgi en son ne zaman görüldü
+bool tumSiyah = false;              // 4 sensör de siyah mı görüyor
+unsigned long tumSiyahBaslangic = 0;
+
+// ===================== KURULUM =====================
+
+void setup() {
+  pinMode(ENA, OUTPUT);
+  pinMode(IN1, OUTPUT);
+  pinMode(IN2, OUTPUT);
+  pinMode(IN3, OUTPUT);
+  pinMode(IN4, OUTPUT);
+  pinMode(ENB, OUTPUT);
+  pinMode(LED_BUILTIN, OUTPUT);
+  pinMode(BUTON_PIN, INPUT_PULLUP);
+  for (byte i = 0; i < 4; i++) {
+    pinMode(SENSOR_PIN[i], INPUT);
+  }
+  motorSur(0, 0);
+
+  Serial.begin(9600);
+  if (MOD == 1) {
+    Serial.println(F("SENSOR TESTI  (X = cizgi goruyor, . = zemin)"));
+    return;
+  }
+  if (MOD == 2) {
+    Serial.println(F("MOTOR TESTI  - tekerlekleri havaya kaldir!"));
+    delay(2000);
+    return;
+  }
+
+  Serial.println(F("YARIS MODU"));
+  baslamayiBekle();
+  sonGorme = millis();
+}
+
+void loop() {
+  if (MOD == 1) {
+    sensorTesti();
+  } else if (MOD == 2) {
+    motorTesti();
+  } else {
+    cizgiIzle();
+  }
+}
+
+// ===================== ÇİZGİ İZLEME =====================
+
+void cizgiIzle() {
+  bool s[4];
+  byte adet = sensorleriOku(s);
+  digitalWrite(LED_BUILTIN, adet > 0);  // kart LED'i: çizgi görülüyor mu
+
+  // 1) Hiçbir sensör çizgiyi görmüyor: çizgi kaçtı.
+  //    Çizgiyi en son hangi tarafta gördüysek o tarafa yerinde dön.
+  if (adet == 0) {
+    if (millis() - sonGorme > KAYIP_DUR) {
+      motorSur(0, 0);  // çok uzun süre bulamadı, güvenlik için dur
+    } else if (sonHata < 0) {
+      motorSur(-ARAMA_HIZI, ARAMA_HIZI);  // sola dön
+    } else if (sonHata > 0) {
+      motorSur(ARAMA_HIZI, -ARAMA_HIZI);  // sağa dön
+    } else {
+      motorSur(TABAN_HIZ, TABAN_HIZ);     // ortadaydı: kesik çizgi, düz devam
+    }
+    return;
+  }
+  sonGorme = millis();
+
+  // 2) Dört sensör de siyah: kavşak, bitiş bandı ya da robot havaya kalktı.
+  //    Kısa sürerse kavşaktır, düz geç. Uzun sürerse dur.
+  if (adet == 4) {
+    if (!tumSiyah) {
+      tumSiyah = true;
+      tumSiyahBaslangic = millis();
+    }
+    if (millis() - tumSiyahBaslangic > TUM_SIYAH_DUR) {
+      motorSur(0, 0);
+    } else {
+      motorSur(TABAN_HIZ, TABAN_HIZ);
+    }
+    return;
+  }
+  tumSiyah = false;
+
+  // 3) Normal durum: çizginin yerini hesapla.
+  //    hata < 0: çizgi solda, hata > 0: çizgi sağda, 0: tam ortada.
+  int toplam = 0;
+  for (byte i = 0; i < 4; i++) {
+    if (s[i]) toplam += AGIRLIK[i];
+  }
+  float hata = (float)toplam / adet;
+  sonHata = hata;
+
+  // Çizgi soldaysa sol motor yavaşlar, sağ motor hızlanır (robot sola döner).
+  // Çizgi ortadan uzaklaştıkça iki motor da biraz yavaşlar (virajda fren).
+  int taban = TABAN_HIZ - VIRAJ_FRENI * fabs(hata);
+  int duzeltme = KP * hata;
+  motorSur(taban + duzeltme, taban - duzeltme);
+}
+
+// Sensörleri okur, s[] dizisine yazar (true = çizgi var).
+// Kaç sensörün çizgi gördüğünü döndürür.
+byte sensorleriOku(bool s[4]) {
+  byte adet = 0;
+  for (byte i = 0; i < 4; i++) {
+    s[i] = (digitalRead(SENSOR_PIN[i]) == CIZGI_SEVIYESI);
+    if (s[i]) adet++;
+  }
+  return adet;
+}
+
+// ===================== MOTORLAR =====================
+
+// sol, sag: -255 (tam geri) ... 0 (dur) ... 255 (tam ileri)
+void motorSur(int sol, int sag) {
+  if (SOL_TERS) sol = -sol;
+  if (SAG_TERS) sag = -sag;
+  tekMotor(ENA, IN1, IN2, sol);
+  tekMotor(ENB, IN3, IN4, sag);
+}
+
+void tekMotor(byte en, byte inA, byte inB, int hiz) {
+  hiz = constrain(hiz, -MAKS_HIZ, MAKS_HIZ);
+  if (hiz >= 0) {
+    digitalWrite(inA, HIGH);
+    digitalWrite(inB, LOW);
+  } else {
+    digitalWrite(inA, LOW);
+    digitalWrite(inB, HIGH);
+    hiz = -hiz;
+  }
+  analogWrite(en, hiz);
+}
+
+// ===================== BAŞLANGIÇ =====================
+
+void baslamayiBekle() {
+  if (BUTON_KULLAN) {
+    Serial.println(F("Baslamak icin butona bas (D2)"));
+    while (digitalRead(BUTON_PIN) == HIGH) {
+      digitalWrite(LED_BUILTIN, (millis() / 100) % 2);  // hızlı yanıp söner
+    }
+    delay(500);  // elini robottan çekmen için
+  } else {
+    Serial.print(BASLAMA_BEKLEME / 1000);
+    Serial.println(F(" saniye sonra basliyor..."));
+    unsigned long bas = millis();
+    while (millis() - bas < BASLAMA_BEKLEME) {
+      digitalWrite(LED_BUILTIN, (millis() / 250) % 2);  // yavaş yanıp söner
+    }
+  }
+  Serial.println(F("BASLADI"));
+}
+
+// ===================== TEST MODLARI =====================
+
+void sensorTesti() {
+  bool s[4];
+  sensorleriOku(s);
+
+  Serial.print(F("S1 S2 S3 S4:  "));
+  for (byte i = 0; i < 4; i++) {
+    Serial.print(s[i] ? F("X  ") : F(".  "));
+  }
+  Serial.print(F("   ham pin: "));
+  for (byte i = 0; i < 4; i++) {
+    Serial.print(digitalRead(SENSOR_PIN[i]));
+    Serial.print(' ');
+  }
+  Serial.println();
+  delay(200);
+}
+
+void motorTesti() {
+  motorAdim(F("SOL motor ileri  (sadece sol teker, ileri)"), 160, 0);
+  motorAdim(F("SAG motor ileri  (sadece sag teker, ileri)"), 0, 160);
+  motorAdim(F("Ikisi ileri"), 160, 160);
+  motorAdim(F("Ikisi geri"), -160, -160);
+  motorAdim(F("Yerinde SOLA donus (sol geri, sag ileri)"), -160, 160);
+  Serial.println(F("--- tekrar ---"));
+  delay(2000);
+}
+
+void motorAdim(const __FlashStringHelper *yazi, int sol, int sag) {
+  Serial.println(yazi);
+  motorSur(sol, sag);
+  delay(1500);
+  motorSur(0, 0);
+  delay(800);
+}
+</script>
   </section>
 
   <section class="sec" aria-labelledby="adim-h">
@@ -1243,6 +1635,322 @@ function simStep(sim, tr, dt, bounds) {
     if (api.show) api.show(+b.dataset.n);
   });
 
+
+  // ---------------- Kod: ayar menüsü + canlı .ino ----------------
+/*INO-START*/
+  const DEF = {
+    MOD: 0, CIZGI_SEVIYESI: 'HIGH', SENSOR_TERS: false,
+    TABAN_HIZ: 140, KP: 45, VIRAJ_FRENI: 10, ARAMA_HIZI: 150, MAKS_HIZ: 255,
+    SOL_TERS: false, SAG_TERS: false,
+    BASLAMA_BEKLEME: 3000, TUM_SIYAH_DUR: 400, KAYIP_DUR: 3000, BUTON_KULLAN: false,
+    ENA: '5', IN1: '7', IN2: '8', IN3: '9', IN4: '10', ENB: '6', BUTON_PIN: '2',
+    S1: 'A0', S2: 'A1', S3: 'A2', S4: 'A3'
+  };
+  const PWM_PINS = ['3', '5', '6', '9', '10', '11'];
+  const pinLabel = (p) => (/^A/.test(p) ? p : 'D' + p);
+  const numTxt = (v) => (Number.isInteger(+v) ? String(+v) : String(+(+v).toFixed(2)));
+
+  function buildIno(src, c) {
+    const set = (name, val) => {
+      src = src.replace(new RegExp('^(const [\\w ]+? ' + name + '\\s*=\\s*)[^;]+;', 'm'), (_, a) => a + val + ';');
+    };
+    set('MOD', numTxt(c.MOD));
+    set('CIZGI_SEVIYESI', c.CIZGI_SEVIYESI);
+    ['TABAN_HIZ', 'MAKS_HIZ', 'ARAMA_HIZI', 'KP', 'VIRAJ_FRENI', 'BASLAMA_BEKLEME', 'TUM_SIYAH_DUR', 'KAYIP_DUR'].forEach((k) => set(k, numTxt(c[k])));
+    ['SOL_TERS', 'SAG_TERS', 'BUTON_KULLAN'].forEach((k) => set(k, c[k] ? 'true' : 'false'));
+    ['ENA', 'IN1', 'IN2', 'IN3', 'IN4', 'ENB', 'BUTON_PIN'].forEach((k) => set(k, c[k]));
+    const order = c.SENSOR_TERS ? [c.S4, c.S3, c.S2, c.S1] : [c.S1, c.S2, c.S3, c.S4];
+    src = src.replace(/^(const byte SENSOR_PIN\[4\] = )\{[^}]*\}/m, (_, a) => a + '{' + order.join(', ') + '}');
+    // Dosya başındaki kablolama notu da seçilen pinleri göstersin
+    ['ENA', 'IN1', 'IN2', 'IN3', 'IN4', 'ENB'].forEach((k) => {
+      src = src.replace(new RegExp('(L298N ' + k + '\\s+-> )\\S+'), (_, a) => a + pinLabel(c[k]));
+    });
+    src = src.replace(/(Sensör kartı OUT1 \(en sol\) -> )\S+/, (_, a) => a + pinLabel(c.S1));
+    src = src.replace(/(Sensör kartı OUT2\s+-> )\S+/, (_, a) => a + pinLabel(c.S2));
+    src = src.replace(/(Sensör kartı OUT3\s+-> )\S+/, (_, a) => a + pinLabel(c.S3));
+    src = src.replace(/(Sensör kartı OUT4 \(en sağ\) -> )\S+/, (_, a) => a + pinLabel(c.S4));
+    src = src.replace(/(Başlat butonu: )\S+/, (_, a) => a + pinLabel(c.BUTON_PIN));
+    if (c.BUTON_PIN !== '2') src = src.replace("D2'deki butona", 'BUTON_PIN pinindeki butona');
+    return src;
+  }
+
+  function checkCfg(c) {
+    const out = [];
+    const used = {};
+    [['ENA', c.ENA], ['IN1', c.IN1], ['IN2', c.IN2], ['IN3', c.IN3], ['IN4', c.IN4], ['ENB', c.ENB],
+      ['S1', c.S1], ['S2', c.S2], ['S3', c.S3], ['S4', c.S4], ['BUTON_PIN', c.BUTON_PIN]].forEach(([k, p]) => {
+      (used[p] = used[p] || []).push(k);
+    });
+    Object.keys(used).forEach((p) => {
+      if (used[p].length > 1) out.push(['err', pinLabel(p) + ' birden fazla yerde kullanılmış: ' + used[p].join(', ') + '. Her bağlantı ayrı pine gitmeli.']);
+    });
+    ['ENA', 'ENB'].forEach((k) => {
+      if (PWM_PINS.indexOf(c[k]) < 0) out.push(['err', k + ' hız için PWM pini olmalı (D3, D5, D6, D9, D10, D11).']);
+    });
+    if (+c.MAKS_HIZ < +c.TABAN_HIZ) out.push(['warn', 'MAKS_HIZ, TABAN_HIZ\'dan küçük: motorlar taban hıza hiç çıkamaz.']);
+    if (+c.TABAN_HIZ < 80) out.push(['warn', 'Düşük TABAN_HIZ\'da motorlar dönmeyebilir. Robot kımıldamıyorsa artır.']);
+    if (+c.ARAMA_HIZI < 80) out.push(['warn', 'Düşük ARAMA_HIZI\'nda robot çizgiyi ararken yerinde dönemeyebilir.']);
+    if (+c.KP === 0) out.push(['warn', 'KP 0 iken robot çizgiye göre hiç dönmez.']);
+    if (+c.TUM_SIYAH_DUR < 150) out.push(['warn', 'TUM_SIYAH_DUR çok kısa: robot kavşaklarda durabilir.']);
+    if (+c.KAYIP_DUR < 1000) out.push(['warn', 'KAYIP_DUR çok kısa: robot keskin virajda çizgiyi bulamadan durabilir.']);
+    if (+c.MOD === 2) out.push(['info', 'Motor testinde tekerlekler havada olsun ve pil takılı olsun.']);
+    if (+c.MOD === 1) out.push(['info', 'Sensör testinde motorlar dönmez. Seri Monitörü 9600 baud\'da aç.']);
+    return out;
+  }
+/*INO-END*/
+
+  // Basit C++ renklendirici (satır satır HTML döndürür)
+  const KW = new Set(['const', 'byte', 'bool', 'int', 'float', 'unsigned', 'long', 'void', 'if', 'else', 'for', 'while', 'return', 'switch', 'case', 'break', 'char']);
+  const CONSTS = new Set(['HIGH', 'LOW', 'true', 'false', 'INPUT', 'OUTPUT', 'INPUT_PULLUP', 'LED_BUILTIN', 'A0', 'A1', 'A2', 'A3', 'A4', 'A5', 'F']);
+  const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const tok = (cls, s) => '<span class="c-' + cls + '">' + esc(s) + '</span>';
+  function highlight(code) {
+    let block = false;
+    return code.split('\n').map((line) => {
+      let out = '', i = 0;
+      while (i < line.length) {
+        const rest = line.slice(i);
+        if (block || rest.startsWith('/*')) {
+          const end = line.indexOf('*/', block ? i : i + 2);
+          const stop = end < 0 ? line.length : end + 2;
+          out += tok('com', line.slice(i, stop));
+          block = end < 0;
+          i = stop;
+          continue;
+        }
+        if (rest.startsWith('//')) { out += tok('com', rest); break; }
+        let m = rest.match(/^"(?:[^"\\]|\\.)*"/) || rest.match(/^'(?:[^'\\]|\\.)*'/);
+        if (m) { out += tok('str', m[0]); i += m[0].length; continue; }
+        m = rest.match(/^\d+(?:\.\d+)?/);
+        if (m) { out += tok('num', m[0]); i += m[0].length; continue; }
+        m = rest.match(/^[A-Za-z_]\w*/);
+        if (m) {
+          const w = m[0];
+          const cls = KW.has(w) ? 'kw' : CONSTS.has(w) ? 'cst' : /^[A-Z][A-Z0-9_]+$/.test(w) ? 'def' : /^\s*\(/.test(rest.slice(w.length)) ? 'fn' : null;
+          out += cls ? tok(cls, w) : esc(w);
+          i += w.length;
+          continue;
+        }
+        out += esc(rest[0]);
+        i++;
+      }
+      return out;
+    });
+  }
+
+  const INO = $('#ino-src').textContent.replace(/^\n/, '');
+  const DEF_LINES = buildIno(INO, DEF).split('\n');
+  const CFG_KEY = 'cizgi-izleyen-ayar-v1';
+  const cfg = Object.assign({}, DEF);
+  try {
+    const saved = JSON.parse(localStorage.getItem(CFG_KEY) || 'null');
+    if (saved) Object.keys(DEF).forEach((k) => { if (k in saved && typeof saved[k] === typeof DEF[k]) cfg[k] = saved[k]; });
+  } catch (e) { /* tarayıcı depolaması kapalı olabilir */ }
+  const save = () => { try { localStorage.setItem(CFG_KEY, JSON.stringify(cfg)); } catch (e) { /* yok say */ } };
+
+  const MODES = [[0, 'Yarış', 'Robot çizgiyi izler.'], [1, 'Sensör testi', 'Seri Monitörde sensörler.'], [2, 'Motor testi', 'Motorlar sırayla döner.']];
+  const DIG_PINS = ['2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', 'A0', 'A1', 'A2', 'A3', 'A4', 'A5'];
+  const GROUPS = [
+    { g: 'Çalışma modu', items: [{ k: 'MOD', type: 'mode' }] },
+    { g: 'Sensör', items: [
+      { k: 'CIZGI_SEVIYESI', type: 'seg', opts: [['HIGH', 'Siyahta HIGH'], ['LOW', 'Siyahta LOW']], help: 'Sensör testinde siyahın üstünde ham değer 1 ise HIGH, 0 ise LOW.' },
+      { k: 'SENSOR_TERS', code: 'SENSOR_PIN', type: 'seg', opts: [[false, 'Normal sıra'], [true, 'Ters sıra']], help: 'Robot çizgiye gitmek yerine ondan kaçıyorsa sıra terstir.' }] },
+    { g: 'Hız (0–255)', items: [
+      { k: 'TABAN_HIZ', type: 'range', min: 0, max: 255, step: 1, help: 'Çizgi ortadayken iki motorun hızı.' },
+      { k: 'KP', type: 'range', min: 0, max: 150, step: 0.5, help: 'Dönüş sertliği. Az gelirse virajda kaçar, çok gelirse düzde zikzak çizer.' },
+      { k: 'VIRAJ_FRENI', type: 'range', min: 0, max: 40, step: 1, help: 'Çizgi ortadan kaydıkça iki motordan düşülen hız.' },
+      { k: 'ARAMA_HIZI', type: 'range', min: 0, max: 255, step: 1, help: 'Çizgi kaybolunca yerinde dönme hızı.' },
+      { k: 'MAKS_HIZ', type: 'range', min: 0, max: 255, step: 1, help: 'Hiçbir motor bundan hızlı dönmez. 9 V pille motorlar ısınırsa düşür.' }] },
+    { g: 'Motor yönü', items: [
+      { k: 'SOL_TERS', type: 'switch', label: 'Sol motor ters dönüyor', help: 'Motor testinde sol teker "ileri" yazarken geri dönüyorsa aç.' },
+      { k: 'SAG_TERS', type: 'switch', label: 'Sağ motor ters dönüyor', help: 'Aynısı sağ teker için.' }] },
+    { g: 'Süreler', items: [
+      { k: 'BASLAMA_BEKLEME', type: 'num', min: 0, max: 20000, step: 500, help: 'Güç verildikten sonra robot bu kadar bekler.' },
+      { k: 'TUM_SIYAH_DUR', type: 'num', min: 50, max: 5000, step: 50, help: '4 sensör bu kadar süre siyah görürse durur (bitiş bandı).' },
+      { k: 'KAYIP_DUR', type: 'num', min: 200, max: 20000, step: 500, help: 'Çizgi bu kadar süre bulunamazsa durur.' }] },
+    { g: 'Başlatma', items: [
+      { k: 'BUTON_KULLAN', type: 'switch', label: 'Butona basınca başla', help: 'Kapalıyken BASLAMA_BEKLEME kadar bekleyip kendisi başlar. Buton D2 ile GND arasına.' }] },
+    { g: 'Pinler', adv: true, items: ['ENA', 'IN1', 'IN2', 'IN3', 'IN4', 'ENB', 'S1', 'S2', 'S3', 'S4', 'BUTON_PIN'].map((k) => ({ k: k, type: 'pin', code: /^S\d/.test(k) ? 'SENSOR_PIN' : k })) }
+  ];
+  const PIN_NAMES = { ENA: 'ENA', IN1: 'IN1', IN2: 'IN2', IN3: 'IN3', IN4: 'IN4', ENB: 'ENB', S1: 'Sensör 1 (en sol)', S2: 'Sensör 2', S3: 'Sensör 3', S4: 'Sensör 4 (en sağ)', BUTON_PIN: 'Buton' };
+
+  const form = $('#cfg');
+  const ctl = {};
+  const help = (t) => (t ? '<small>' + t + '</small>' : '');
+  GROUPS.forEach((grp) => {
+    let html = '';
+    grp.items.forEach((it) => {
+      const k = it.k;
+      if (it.type === 'mode') {
+        html += '<div class="modes" role="radiogroup" aria-label="MOD">' + MODES.map((m) =>
+          '<label class="mode" data-v="' + m[0] + '"><input type="radio" name="c-MOD" value="' + m[0] + '"><b><span class="mono">' + m[0] + '</span> ' + m[1] + '</b><span>' + m[2] + '</span></label>').join('') + '</div>';
+      } else if (it.type === 'seg') {
+        html += '<div class="field"><div class="fl"><code>' + (it.code || k) + '</code></div><div class="seg" role="group" aria-label="' + k + '">'
+          + it.opts.map((o) => '<button type="button" class="btn" data-k="' + k + '" data-v="' + o[0] + '" aria-pressed="false">' + o[1] + '</button>').join('') + '</div>' + help(it.help) + '</div>';
+      } else if (it.type === 'range') {
+        html += '<div class="field"><div class="fl"><label for="c-' + k + '"><code>' + k + '</code></label><input class="numin" type="number" id="n-' + k + '" min="' + it.min + '" max="' + it.max + '" step="' + it.step + '" aria-label="' + k + ' değeri"></div>'
+          + '<input type="range" id="c-' + k + '" min="' + it.min + '" max="' + it.max + '" step="' + it.step + '">' + help(it.help) + '</div>';
+      } else if (it.type === 'num') {
+        html += '<div class="field"><div class="fl"><label for="c-' + k + '"><code>' + k + '</code></label><span class="unit"><input class="numin wide" type="number" id="c-' + k + '" min="' + it.min + '" max="' + it.max + '" step="' + it.step + '"> ms</span></div>' + help(it.help) + '</div>';
+      } else if (it.type === 'switch') {
+        html += '<div class="field"><label class="sw" for="c-' + k + '"><input type="checkbox" id="c-' + k + '"><span><code>' + k + '</code> ' + it.label + '</span></label>' + help(it.help) + '</div>';
+      } else if (it.type === 'pin') {
+        const opts = (k === 'ENA' || k === 'ENB') ? PWM_PINS : DIG_PINS;
+        html += '<label class="pin" for="c-' + k + '"><span>' + PIN_NAMES[k] + '</span><select id="c-' + k + '">'
+          + opts.map((p) => '<option value="' + p + '">' + pinLabel(p) + (PWM_PINS.indexOf(p) >= 0 ? ' ~' : '') + '</option>').join('') + '</select></label>';
+      }
+    });
+    const box = document.createElement(grp.adv ? 'details' : 'fieldset');
+    box.className = 'grp' + (grp.adv ? ' adv' : '');
+    box.innerHTML = grp.adv
+      ? '<summary>Pinler <span class="muted">(kabloları farklı taktıysan)</span></summary><p class="note">~ işaretli pinler PWM\'dir; ENA ve ENB bunlardan birine takılmalı. D0, D1 (USB) ve D13 (kart LED\'i) listede yok.</p><div class="pins">' + html + '</div>'
+      : '<legend>' + grp.g + '</legend>' + html;
+    form.appendChild(box);
+    grp.items.forEach((it) => { it.codeKey = it.code || it.k; });
+  });
+  const codeKeyOf = {};
+  GROUPS.forEach((grp) => grp.items.forEach((it) => { codeKeyOf[it.k] = it.codeKey; }));
+
+  // Kontrolleri bağla
+  GROUPS.forEach((grp) => grp.items.forEach((it) => {
+    const k = it.k;
+    if (it.type === 'mode') {
+      const labels = Array.from(form.querySelectorAll('.mode'));
+      labels.forEach((lb) => lb.querySelector('input').addEventListener('change', () => setSetting(k, +lb.dataset.v, 'ui')));
+      ctl[k] = (v) => labels.forEach((lb) => { const on = +lb.dataset.v === +v; lb.classList.toggle('on', on); lb.querySelector('input').checked = on; });
+    } else if (it.type === 'seg') {
+      const btns = Array.from(form.querySelectorAll('.seg [data-k="' + k + '"]'));
+      const parse = (s) => (s === 'true' ? true : s === 'false' ? false : s);
+      btns.forEach((b) => b.addEventListener('click', () => setSetting(k, parse(b.dataset.v), 'ui')));
+      ctl[k] = (v) => btns.forEach((b) => b.setAttribute('aria-pressed', String(parse(b.dataset.v) === v)));
+    } else if (it.type === 'range') {
+      const r = $('#c-' + k), n = $('#n-' + k);
+      r.addEventListener('input', () => { n.value = r.value; setSetting(k, +r.value, 'ui'); });
+      n.addEventListener('input', () => {
+        const v = parseFloat(n.value);
+        if (isNaN(v)) return;
+        const c = Math.max(it.min, Math.min(it.max, v));
+        r.value = c;
+        setSetting(k, c, 'ui');
+      });
+      n.addEventListener('blur', () => { n.value = numTxt(cfg[k]); });
+      ctl[k] = (v) => { r.value = v; n.value = numTxt(v); };
+    } else if (it.type === 'num') {
+      const n = $('#c-' + k);
+      n.addEventListener('input', () => {
+        const v = parseInt(n.value, 10);
+        if (isNaN(v)) return;
+        setSetting(k, Math.max(it.min, Math.min(it.max, v)), 'ui');
+      });
+      n.addEventListener('blur', () => { n.value = cfg[k]; });
+      ctl[k] = (v) => { n.value = v; };
+    } else if (it.type === 'switch') {
+      const c = $('#c-' + k);
+      c.addEventListener('change', () => setSetting(k, c.checked, 'ui'));
+      ctl[k] = (v) => { c.checked = !!v; };
+    } else if (it.type === 'pin') {
+      const s = $('#c-' + k);
+      s.addEventListener('change', () => setSetting(k, s.value, 'ui'));
+      ctl[k] = (v) => { s.value = v; };
+    }
+  }));
+
+  // Simülasyon sürgüleriyle bağlantı
+  const SIM_SLIDERS = { TABAN_HIZ: ['k-taban', 'o-taban'], KP: ['k-kp', 'o-kp'], VIRAJ_FRENI: ['k-fren', 'o-fren'] };
+  Object.keys(SIM_SLIDERS).forEach((k) => {
+    const el = $('#' + SIM_SLIDERS[k][0]);
+    el.addEventListener('input', () => setSetting(k, +el.value, 'sim'));
+  });
+
+  const codeEl = $('#code'), rowsEl = $('#code-rows');
+  let currentCode = '';
+  function render(scrollKey) {
+    currentCode = buildIno(INO, cfg);
+    const lines = currentCode.split('\n'), html = highlight(currentCode);
+    let changed = 0;
+    rowsEl.innerHTML = lines.map((l, i) => {
+      const ch = l !== DEF_LINES[i];
+      if (ch) changed++;
+      return '<span class="r' + (ch ? ' chg' : '') + '"><span class="lno">' + (i + 1) + '</span>' + (html[i] || ' ') + '</span>';
+    }).join('');
+    $('#chg-count').textContent = changed ? changed + ' satır değişti' : 'Varsayılan ayarlar';
+    $('#chg-count').classList.toggle('on', changed > 0);
+    const issues = checkCfg(cfg);
+    const box = $('#issues');
+    box.hidden = !issues.length;
+    box.innerHTML = issues.map((x) => '<li class="' + x[0] + '">' + (x[0] === 'err' ? '<b>Hata:</b> ' : x[0] === 'warn' ? '<b>Dikkat:</b> ' : '') + x[1] + '</li>').join('');
+    if (scrollKey) {
+      const name = codeKeyOf[scrollKey] || scrollKey;
+      const re = new RegExp('^const [\\w ]+? ' + name + '(\\[\\d\\])?\\s*=');
+      const idx = lines.findIndex((l) => re.test(l));
+      const row = rowsEl.children[idx];
+      if (row) {
+        codeEl.scrollTo({ top: Math.max(0, row.offsetTop - codeEl.clientHeight * 0.35), behavior: reduceMotion ? 'auto' : 'smooth' });
+        row.classList.add('flash');
+      }
+    }
+  }
+
+  const typeOf = {};
+  GROUPS.forEach((grp) => grp.items.forEach((it) => { typeOf[it.k] = it.type; }));
+  function setSetting(k, v, from) {
+    cfg[k] = v;
+    if (k in AYAR) AYAR[k] = +v;
+    const ss = SIM_SLIDERS[k];
+    if (ss && from !== 'sim') { $('#' + ss[0]).value = v; $('#' + ss[1]).textContent = numTxt(v); }
+    // Yazılan sayı kutusunu yazarken ezme (ör. "37," yazılırken)
+    const typing = from === 'ui' && (typeOf[k] === 'range' || typeOf[k] === 'num');
+    if (ctl[k] && !typing) ctl[k](v);
+    render(k);
+    save();
+    if (k in AYAR) renderExplainer();
+  }
+
+  function applyAll(from) {
+    Object.keys(cfg).forEach((k) => {
+      if (k in AYAR) AYAR[k] = +cfg[k];
+      if (ctl[k]) ctl[k](cfg[k]);
+      const ss = SIM_SLIDERS[k];
+      if (ss) { $('#' + ss[0]).value = cfg[k]; $('#' + ss[1]).textContent = numTxt(cfg[k]); }
+    });
+    render(null);
+    renderExplainer();
+    if (from !== 'load') save();
+  }
+  applyAll('load');
+
+  let undoCfg = null;
+  $('#cfg-reset').addEventListener('click', () => {
+    undoCfg = Object.assign({}, cfg);
+    Object.assign(cfg, DEF);
+    applyAll('reset');
+    $('#copy-status').innerHTML = 'Varsayılan ayarlara dönüldü. <button class="link" type="button" id="undo">Geri al</button>';
+    $('#undo').addEventListener('click', () => {
+      if (!undoCfg) return;
+      Object.assign(cfg, undoCfg);
+      undoCfg = null;
+      applyAll('undo');
+      $('#copy-status').textContent = 'Önceki ayarlar geri geldi.';
+    });
+  });
+  $('#copy').addEventListener('click', () => {
+    const status = $('#copy-status');
+    const fallback = () => {
+      const sel = window.getSelection();
+      const range = document.createRange();
+      range.selectNodeContents(rowsEl);
+      sel.removeAllRanges();
+      sel.addRange(range);
+      status.textContent = 'Kod seçildi. Ctrl+C ile kopyala.';
+    };
+    try {
+      navigator.clipboard.writeText(currentCode).then(() => {
+        status.textContent = 'Kopyalandı. Arduino IDE\'de boş bir taslağa yapıştır.';
+      }, fallback);
+    } catch (e) { fallback(); }
+  });
+  rowsEl.addEventListener('animationend', (ev) => ev.target.classList.remove('flash'));
+
   // ---------------- 3D ----------------
   const PARTS = [
     { n: 1, name: 'Arduino UNO', d: 'Üst kat, USB arkaya bakar. Kodu çalıştıran kart.', g: ['uno'], at: [0.4, 9.6, -2.0] },
@@ -1271,6 +1979,7 @@ function simStep(sim, tr, dt, bounds) {
 
   if (!window.THREE || !THREE.OrbitControls) { showFallback(); return; }
   try { init3D(); } catch (err) { console.error(err); showFallback(); }
+  applyAll('load');
 
   function init3D() {
     const view = $('#view');
