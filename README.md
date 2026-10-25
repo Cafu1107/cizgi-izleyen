@@ -10,7 +10,7 @@ Okul projesi: kitteki parçalarla (Arduino UNO, L298N, 4'lü kızılötesi sens�
 | [`robot.html`](robot.html) | 3D model, pist simülasyonu, ölçüler, kablolama şeması ve ayar menülü kod üretici (claude.ai sayfasının kaynağı). |
 | [`index.html`](index.html) | GitHub Pages sürümü. `robot.html` değişince `node tools/build-index.js` ile yeniden üret. |
 
-Sayfa: https://cafu1107.github.io/cizgi-izleyen/ (depo özel, ama Pages adresini bilen herkes sayfayı açabilir).
+Sayfa: https://cafu1107.github.io/cizgi-izleyen/
 claude.ai kopyası: https://claude.ai/artifact/7p15a4Bj83Es5iEGig92bk (sadece paylaşılan kişiler açabilir).
 
 ## Kodun modları
