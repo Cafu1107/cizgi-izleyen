@@ -1,0 +1,1872 @@
+<meta charset="utf-8">
+<title>Çizgi İzleyen Robot</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=Atkinson+Hyperlegible+Next:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+  /* Kit-manual layout: one large model stage, parts numbered like an assembly sheet, plexi red as the only accent */
+  :root {
+    --bg: #EEF1EF; --surface: #FFFFFF; --sunken: #E3E8E5; --fg: #141919; --muted: #56615E; --line: #CBD3CF;
+    --accent: #C62029; --accent-soft: rgba(198, 32, 41, .12); --on-accent: #FFFFFF; --viewer: #DAE1DD;
+    --paper: #F6F6F2; --tape: #161616; --paper-ink: #1E2222;
+    --w-pwm: #D97706; --w-in1: #16A34A; --w-in2: #2563EB; --w-in3: #7C3AED; --w-in4: #0891B2;
+    --w-pwr: #DC2626; --w-gnd: #141919; --w-sig: #A16207; --w-mot: #56615E;
+    --font-display: "Archivo", "Arial Narrow", system-ui, sans-serif;
+    --font-body: "Atkinson Hyperlegible Next", "Segoe UI", system-ui, sans-serif;
+    --font-mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0F1314; --surface: #171D1E; --sunken: #1F2729; --fg: #E5EBE8; --muted: #98A4A0; --line: #2C3739;
+      --accent: #F0474F; --accent-soft: rgba(240, 71, 79, .16); --on-accent: #FFFFFF; --viewer: #0B0F10;
+      --w-pwm: #F59E0B; --w-in1: #22C55E; --w-in2: #60A5FA; --w-in3: #A78BFA; --w-in4: #22D3EE;
+      --w-pwr: #F87171; --w-gnd: #E5EBE8; --w-sig: #EAB308; --w-mot: #98A4A0;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0F1314; --surface: #171D1E; --sunken: #1F2729; --fg: #E5EBE8; --muted: #98A4A0; --line: #2C3739;
+    --accent: #F0474F; --accent-soft: rgba(240, 71, 79, .16); --on-accent: #FFFFFF; --viewer: #0B0F10;
+    --w-pwm: #F59E0B; --w-in1: #22C55E; --w-in2: #60A5FA; --w-in3: #A78BFA; --w-in4: #22D3EE;
+    --w-pwr: #F87171; --w-gnd: #E5EBE8; --w-sig: #EAB308; --w-mot: #98A4A0;
+    color-scheme: dark;
+  }
+
+  body { background: var(--bg); color: var(--fg); font: 16px/1.55 var(--font-body); }
+  .page {
+    max-width: 1180px; margin: 0 auto;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 36px 72px;
+    display: grid; gap: 64px;
+  }
+  h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; margin: 0; }
+  h1 { font-size: clamp(2.3rem, 6.4vw, 4.4rem); font-weight: 820; font-stretch: 125%; line-height: .98; letter-spacing: -.01em; }
+  h2 { font-size: clamp(1.45rem, 3vw, 2rem); font-weight: 780; font-stretch: 112%; line-height: 1.1; }
+  h3 { font-size: 1.02rem; font-weight: 720; font-stretch: 105%; }
+  p { margin: 0; }
+  code, .mono { font-family: var(--font-mono); font-size: .88em; }
+  .eyebrow { font: 600 .74rem/1.3 var(--font-mono); text-transform: uppercase; letter-spacing: .09em; color: var(--muted); }
+  .muted { color: var(--muted); }
+
+  .intro { display: grid; gap: 14px; max-width: 760px; }
+  .lede { font-size: 1.08rem; max-width: 62ch; }
+
+  /* ---------- stage ---------- */
+  .stage {
+    display: grid; grid-template-columns: minmax(0, 1fr) 330px;
+    background: var(--surface); border: 1px solid var(--line); border-radius: 14px; overflow: hidden;
+  }
+  .view { position: relative; height: clamp(440px, 66vh, 680px); background: var(--viewer); min-width: 0; }
+  .gl { position: absolute; inset: 0; width: 100%; height: 100%; display: block; outline: none; }
+  .tabs {
+    position: absolute; top: 12px; left: 12px; display: flex; padding: 3px; gap: 2px;
+    background: var(--surface); border: 1px solid var(--line); border-radius: 10px; z-index: 3;
+  }
+  .tabs button {
+    font: 600 .86rem var(--font-body); color: var(--fg); background: transparent; border: 0;
+    padding: .45rem .8rem; border-radius: 7px; cursor: pointer;
+  }
+  .tabs button[aria-selected="true"] { background: var(--accent); color: var(--on-accent); }
+  .cams { position: absolute; top: 12px; right: 12px; display: flex; gap: 6px; z-index: 3; }
+  .hint {
+    position: absolute; right: 12px; bottom: 12px; z-index: 2; font: 500 .74rem var(--font-mono);
+    color: var(--muted); background: var(--surface); padding: 4px 8px; border-radius: 6px; border: 1px solid var(--line);
+  }
+  .btn {
+    font: 600 .86rem/1 var(--font-body); color: var(--fg); background: var(--surface);
+    border: 1px solid var(--line); border-radius: 8px; padding: .55rem .8rem; cursor: pointer;
+  }
+  .btn:hover { border-color: var(--muted); }
+  .btn[aria-pressed="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+  .btn.primary { background: var(--accent); color: var(--on-accent); border-color: transparent; }
+  button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  #dots { position: absolute; inset: 0; pointer-events: none; z-index: 2; overflow: hidden; }
+  .dot {
+    position: absolute; left: 0; top: 0; width: 24px; height: 24px; margin: -12px 0 0 -12px; padding: 0;
+    border-radius: 50%; border: 2px solid var(--on-accent); background: var(--accent); color: var(--on-accent);
+    font: 600 11px/20px var(--font-mono); text-align: center; pointer-events: auto; cursor: pointer;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, .35);
+  }
+  .dot::after {
+    content: attr(data-name); position: absolute; left: 28px; top: 50%; transform: translateY(-50%);
+    white-space: nowrap; background: var(--surface); color: var(--fg); border: 1px solid var(--line);
+    font: 600 12px/1.2 var(--font-body); padding: 4px 8px; border-radius: 6px; opacity: 0; pointer-events: none;
+    transition: opacity .15s;
+  }
+  .dot:hover::after, .dot.on::after { opacity: 1; }
+  .dot.on { transform-origin: center; box-shadow: 0 0 0 4px var(--accent-soft), 0 1px 4px rgba(0, 0, 0, .35); }
+
+  .hud {
+    position: absolute; left: 12px; bottom: 12px; z-index: 3; display: grid; gap: 8px; min-width: 210px;
+    background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px;
+    font: 500 .78rem/1.3 var(--font-mono); font-variant-numeric: tabular-nums;
+  }
+  .hud-s { display: flex; gap: 5px; }
+  .s {
+    flex: 1; height: 24px; display: grid; place-items: center; border: 1px solid var(--line);
+    border-radius: 5px; color: var(--muted); font-weight: 600;
+  }
+  .s.on { background: var(--accent); color: var(--on-accent); border-color: transparent; }
+  .hud-row { display: flex; justify-content: space-between; gap: 10px; }
+  .hud-row b { font-weight: 600; color: var(--fg); }
+  .hud-state { font-family: var(--font-body); font-weight: 600; font-size: .84rem; }
+  .fallback { position: absolute; inset: 0; display: grid; place-items: center; padding: 24px; text-align: center; color: var(--muted); }
+
+  .panel { border-left: 1px solid var(--line); padding: 20px; display: grid; align-content: start; gap: 18px; min-width: 0; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; }
+  .parts { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+  .part {
+    width: 100%; display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 10px; align-items: start;
+    text-align: left; background: transparent; border: 0; border-radius: 8px; padding: 7px 8px;
+    color: inherit; font: inherit; cursor: pointer;
+  }
+  .part:hover, .part.on { background: var(--sunken); }
+  .num {
+    width: 24px; height: 24px; border-radius: 50%; border: 1.5px solid var(--accent); color: var(--accent);
+    display: grid; place-items: center; font: 600 11px var(--font-mono);
+  }
+  .part.on .num { background: var(--accent); color: var(--on-accent); }
+  .part b { display: block; font-size: .93rem; line-height: 1.25; }
+  .part span.d { display: block; font-size: .8rem; color: var(--muted); line-height: 1.35; margin-top: 2px; }
+
+  .ctl { display: grid; gap: 6px; }
+  .ctl label { display: flex; justify-content: space-between; font-weight: 600; font-size: .88rem; }
+  .ctl output { font: 600 .86rem var(--font-mono); color: var(--accent); }
+  .ctl small { color: var(--muted); font-size: .78rem; line-height: 1.35; }
+  input[type="range"] { width: 100%; accent-color: var(--accent); }
+  .check { display: flex; gap: 8px; align-items: center; font-size: .88rem; }
+  .laps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .laps div { background: var(--sunken); border-radius: 8px; padding: 8px 10px; }
+  .laps span { display: block; font-size: .72rem; color: var(--muted); }
+  .laps b { font: 600 1.05rem var(--font-mono); font-variant-numeric: tabular-nums; }
+  .note { font-size: .8rem; color: var(--muted); line-height: 1.45; }
+
+  /* ---------- sections ---------- */
+  .sec { display: grid; gap: 24px; }
+  .sec-head { display: grid; gap: 8px; max-width: 760px; }
+  .explain { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: 32px; align-items: start; }
+  .prose { display: grid; gap: 14px; max-width: 62ch; }
+  .weights { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+  .weights div { border: 1px solid var(--line); border-radius: 8px; padding: 8px; text-align: center; }
+  .weights b { display: block; font: 600 1.1rem var(--font-mono); }
+  .weights span { font-size: .76rem; color: var(--muted); }
+  .formula { font: 500 .9rem/1.7 var(--font-mono); background: var(--sunken); border-radius: 10px; padding: 12px 14px; }
+  .lab { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 18px; display: grid; gap: 14px; min-width: 0; }
+  .lab svg { width: 100%; height: auto; display: block; }
+  .range-label { display: flex; justify-content: space-between; font-weight: 600; font-size: .9rem; }
+  .range-label output { font: 600 .9rem var(--font-mono); color: var(--accent); }
+  .calc { display: grid; grid-template-columns: minmax(0, 1fr) 150px; gap: 16px; align-items: center; }
+  .calc dl { margin: 0; display: grid; gap: 4px; font: 500 .82rem/1.4 var(--font-mono); font-variant-numeric: tabular-nums; }
+  .calc dl div { display: grid; grid-template-columns: 104px minmax(0, 1fr); gap: 8px; }
+  .calc dt { color: var(--muted); }
+  .calc dd { margin: 0; overflow-wrap: anywhere; }
+  .verdict {
+    justify-self: start; font-weight: 700; background: var(--accent); color: var(--on-accent);
+    padding: 6px 12px; border-radius: 999px; font-size: .92rem;
+  }
+  .sd { fill: var(--paper); stroke: var(--paper-ink); stroke-width: 2; }
+  .sd.on { fill: var(--accent); stroke: var(--accent); }
+  .mdot { fill: var(--surface); stroke: var(--fg); stroke-width: 1.5; }
+  .mdot.on { fill: var(--accent); stroke: var(--accent); }
+
+  .drawing { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 28px; align-items: start; }
+  .scroll { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 12px; }
+  .scroll svg { display: block; width: 100%; height: auto; }
+  .scroll.wide svg { min-width: 760px; }
+  .keys { margin: 0; display: grid; gap: 12px; }
+  .keys div { border-top: 1px solid var(--line); padding-top: 10px; }
+  .keys dt { font-size: .8rem; color: var(--muted); }
+  .keys dd { margin: 2px 0 0; font: 600 1.15rem var(--font-mono); }
+  .keys dd small { display: block; font: 400 .8rem var(--font-body); color: var(--muted); margin-top: 2px; }
+
+  svg .t { fill: var(--fg); font-family: var(--font-body); font-size: 13px; }
+  svg .tm { fill: var(--muted); font-family: var(--font-body); font-size: 12px; }
+  svg .tn { fill: var(--fg); font-family: var(--font-mono); font-size: 12px; font-weight: 600; }
+  svg .th { fill: var(--fg); font-family: var(--font-display); font-size: 15px; font-weight: 760; }
+  svg .o { fill: var(--surface); stroke: var(--fg); stroke-width: 1.4; }
+  svg .os { fill: var(--sunken); stroke: var(--fg); stroke-width: 1.2; }
+  svg .ln { stroke: var(--fg); stroke-width: 1.2; fill: none; }
+  svg .lm { stroke: var(--muted); stroke-width: 1; fill: none; }
+  svg .acc { fill: var(--accent); stroke: var(--accent); }
+  svg .accl { stroke: var(--accent); stroke-width: 1.6; fill: none; }
+  svg .wire { fill: none; stroke-width: 3.2; stroke-linecap: round; stroke-linejoin: round; }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: .84rem; }
+  .legend span { display: inline-flex; align-items: center; gap: 7px; }
+  .legend i { width: 22px; height: 4px; border-radius: 2px; display: inline-block; }
+  .warn { display: grid; gap: 8px; margin: 0; padding-left: 1.2em; max-width: 75ch; }
+
+  .steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; counter-reset: s; }
+  .steps li {
+    counter-increment: s; background: var(--surface); border: 1px solid var(--line); border-radius: 12px;
+    padding: 16px; display: grid; gap: 6px; align-content: start;
+  }
+  .steps li::before { content: counter(s, decimal-leading-zero); font: 600 .78rem var(--font-mono); color: var(--accent); }
+  .steps p { font-size: .92rem; color: var(--muted); }
+  .foot { font-size: .84rem; color: var(--muted); max-width: 75ch; border-top: 1px solid var(--line); padding-top: 18px; }
+
+  svg .dash { fill: none; stroke: var(--muted); stroke-width: 1; stroke-dasharray: 4 3; }
+  svg .beam { fill: none; stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 3 3; }
+  svg .tv { fill: var(--muted); font: 600 9.5px var(--font-mono); letter-spacing: .08em; }
+  .dwg { display: grid; gap: 12px; min-width: 0; }
+  .scroll.dw svg { min-width: 560px; }
+  h3.sub { font-size: clamp(1.15rem, 2.2vw, 1.4rem); }
+  .tags-legend { font-size: .86rem; color: var(--muted); line-height: 1.9; }
+  .tag {
+    display: inline-block; font: 600 .7rem/1.4 var(--font-mono); padding: 2px 8px; border-radius: 999px;
+    border: 1px solid var(--line); color: var(--muted); white-space: nowrap;
+  }
+  .tag.est { color: var(--accent); border-color: var(--accent); }
+  .pgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); gap: 14px; }
+  .pcard {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px;
+    display: grid; gap: 12px; align-content: start; min-width: 0;
+  }
+  .pcard header { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .pcard h3 { flex: 1; min-width: 0; }
+  .pcard svg { width: 100%; height: auto; display: block; }
+  .pcard svg .tn { font-size: 11px; }
+  .pcard svg .tm { font-size: 10.5px; }
+  .pdims { margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px; }
+  .pdims dt { font-size: .74rem; color: var(--muted); }
+  .pdims dd { margin: 0; font: 600 .9rem var(--font-mono); font-variant-numeric: tabular-nums; }
+  .pnote { font-size: .84rem; color: var(--muted); }
+  .link {
+    justify-self: start; background: none; border: 0; padding: 0; color: var(--accent); cursor: pointer;
+    font: 600 .84rem var(--font-body); text-decoration: underline; text-underline-offset: 3px;
+  }
+  @media (max-width: 920px) {
+    .stage { grid-template-columns: minmax(0, 1fr); }
+    .panel { border-left: 0; border-top: 1px solid var(--line); }
+    .explain, .drawing { grid-template-columns: minmax(0, 1fr); }
+    .steps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  @media (max-width: 560px) {
+    .view { height: 440px; }
+    .steps { grid-template-columns: minmax(0, 1fr); }
+    .calc { grid-template-columns: minmax(0, 1fr); }
+    .calc svg { max-width: 170px; justify-self: center; }
+    .hint { display: none; }
+    .hud { min-width: 0; right: 12px; }
+  }
+  @media (prefers-reduced-motion: reduce) { .dot::after { transition: none; } }
+</style>
+
+<div class="page" lang="tr">
+  <header class="intro">
+    <p class="eyebrow">Okul projesi · <span lang="en">Arduino UNO + L298N</span> + 4'lü kızılötesi sensör</p>
+    <h1>Çizgi İzleyen Robot</h1>
+    <p class="lede">Kitteki parçalarla kuracağınız robotun 3D modeli. Döndürüp inceleyebilir, parçalarını ayırabilir ya da pistte <code>cizgi_izleyen.ino</code> kodundaki kurallarla sürebilirsin.</p>
+  </header>
+
+  <section class="stage" aria-label="3D robot modeli">
+    <div class="view" id="view">
+      <div class="tabs" role="tablist" aria-label="Görünüm">
+        <button role="tab" id="tab-parts" aria-selected="true" aria-controls="panel-parts">Parçalar</button>
+        <button role="tab" id="tab-drive" aria-selected="false" aria-controls="panel-drive">Pistte sür</button>
+      </div>
+      <div class="cams">
+        <button class="btn" id="cam-near" aria-pressed="true">Robota yakın</button>
+        <button class="btn" id="cam-top" aria-pressed="false">Tüm pist</button>
+      </div>
+      <div id="dots"></div>
+      <div class="hud" id="hud" hidden aria-live="off">
+        <div class="hud-s"><span class="s">S1</span><span class="s">S2</span><span class="s">S3</span><span class="s">S4</span></div>
+        <div class="hud-row"><span>hata</span><b id="h-hata">0</b><span>sol</span><b id="h-sol">0</b><span>sağ</span><b id="h-sag">0</b></div>
+        <div class="hud-state" id="h-state">Hazır</div>
+      </div>
+      <p class="hint" id="hint">Sürükle: döndür · Tekerlek / iki parmak: yakınlaştır</p>
+      <div class="fallback" id="fallback" hidden><p>3D görünüm bu tarayıcıda açılamadı. Aşağıdaki çizimler ve şema aynı bilgiyi veriyor.</p></div>
+    </div>
+
+    <aside class="panel">
+      <div id="panel-parts" role="tabpanel" aria-labelledby="tab-parts" style="display:grid;gap:16px">
+        <div class="row">
+          <button class="btn" id="explode" aria-pressed="false">Parçaları ayır</button>
+          <button class="btn" id="labels" aria-pressed="true">Numaralar</button>
+        </div>
+        <ol class="parts" id="parts"></ol>
+      </div>
+      <div id="panel-drive" role="tabpanel" aria-labelledby="tab-drive" hidden style="gap:18px">
+        <div class="row">
+          <button class="btn primary" id="run">Başlat</button>
+          <button class="btn" id="reset">Sıfırla</button>
+        </div>
+        <label class="check" for="slow"><input type="checkbox" id="slow"> Ağır çekim (4 kat yavaş)</label>
+        <div class="ctl">
+          <label for="k-taban">TABAN_HIZ <output id="o-taban">140</output></label>
+          <input type="range" id="k-taban" min="60" max="255" step="5" value="140">
+          <small>Çizgi ortadayken iki motorun hızı (0–255).</small>
+        </div>
+        <div class="ctl">
+          <label for="k-kp">KP <output id="o-kp">45</output></label>
+          <input type="range" id="k-kp" min="0" max="120" step="5" value="45">
+          <small>Dönüş sertliği. Az gelirse virajda kaçar, çok gelirse düzde zikzak çizer.</small>
+        </div>
+        <div class="ctl">
+          <label for="k-fren">VIRAJ_FRENI <output id="o-fren">10</output></label>
+          <input type="range" id="k-fren" min="0" max="30" step="1" value="10">
+          <small>Çizgi ortadan kaydıkça iki motordan düşülen hız.</small>
+        </div>
+        <div class="laps">
+          <div><span>Tur</span><b id="lap-count">0</b></div>
+          <div><span>Son tur</span><b id="lap-last">—</b></div>
+          <div><span>En iyi</span><b id="lap-best">—</b></div>
+        </div>
+        <p class="note">Simülasyon koddaki kuralları birebir uygular ama motorlar, zemin ve pil ideal kabul edilir. Gerçek robotta değerleri pistte deneyerek ayarla.</p>
+      </div>
+    </aside>
+  </section>
+
+  <section class="sec" aria-labelledby="nasil-h">
+    <div class="sec-head">
+      <p class="eyebrow">Kod ne yapıyor</p>
+      <h2 id="nasil-h">Robot çizgiyi nasıl görür?</h2>
+    </div>
+    <div class="explain">
+      <div class="prose">
+        <p>Her sensör yere kızılötesi ışık yollar. Beyaz zemin ışığı geri yansıtır, siyah bant yutar. Kontrol kartındaki trimpot "ne kadar ışık dönerse beyaz sayılsın" eşiğini ayarlar. Arduino her sensörden sadece 0 ya da 1 okur.</p>
+        <p>Kod her sensöre bir puan verir. Çizgiyi gören sensörlerin puan ortalaması <b>hata</b> olur: eksiyse çizgi solda, artıysa sağda, sıfırsa tam ortada.</p>
+        <div class="weights" aria-label="Sensör puanları">
+          <div><b>−3</b><span>S1 · en sol</span></div>
+          <div><b>−1</b><span>S2</span></div>
+          <div><b>+1</b><span>S3</span></div>
+          <div><b>+3</b><span>S4 · en sağ</span></div>
+        </div>
+        <div class="formula">sol = taban + KP × hata<br>sağ = taban − KP × hata</div>
+        <p>Çizgi soldaysa hata eksi olur: sol tekerlek yavaşlar, sağ tekerlek hızlanır ve robot sola döner. Çizgi hiç görünmezse robot çizgiyi en son gördüğü tarafa yerinde döner. Dört sensör birden siyah görürse kısa süre düz geçer (kavşak), 0,4 saniyeden uzun sürerse durur.</p>
+      </div>
+      <div class="lab">
+        <svg id="strip" viewBox="0 0 560 168" role="img" aria-label="Siyah bandın dört sensöre göre yeri">
+          <text class="tn" x="145" y="16" text-anchor="middle">S1</text>
+          <text class="tn" x="235" y="16" text-anchor="middle">S2</text>
+          <text class="tn" x="325" y="16" text-anchor="middle">S3</text>
+          <text class="tn" x="415" y="16" text-anchor="middle">S4</text>
+          <clipPath id="paper-clip"><rect x="10" y="28" width="540" height="96" rx="6"/></clipPath>
+          <rect x="10" y="28" width="540" height="96" rx="6" style="fill:var(--paper);stroke:var(--line)"/>
+          <g clip-path="url(#paper-clip)">
+            <rect id="tape" x="223" y="28" width="114" height="96" style="fill:var(--tape)"/>
+            <text id="tape-label" x="280" y="116" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11" style="fill:var(--paper)">19 mm bant</text>
+          </g>
+          <circle class="sd" id="sd0" cx="145" cy="72" r="17"/>
+          <circle class="sd" id="sd1" cx="235" cy="72" r="17"/>
+          <circle class="sd" id="sd2" cx="325" cy="72" r="17"/>
+          <circle class="sd" id="sd3" cx="415" cy="72" r="17"/>
+          <path class="lm" d="M235 140 V152 M325 140 V152 M235 146 H325"/>
+          <text class="tm" x="280" y="164" text-anchor="middle">15 mm</text>
+          <text class="tm" x="14" y="146">← robotun solu</text>
+          <text class="tm" x="546" y="146" text-anchor="end">sağı →</text>
+        </svg>
+        <label class="range-label" for="line-pos">Bandı sensörlerin altında kaydır <output id="line-pos-out">0 mm</output></label>
+        <input type="range" id="line-pos" min="-40" max="40" step="0.5" value="0">
+        <div class="calc">
+          <dl id="calc"></dl>
+          <svg id="mini" viewBox="0 0 180 204" role="img" aria-label="Tekerlek hızları">
+            <rect x="52" y="44" width="76" height="122" rx="10" class="os"/>
+            <rect x="34" y="82" width="14" height="46" rx="3" style="fill:var(--fg)"/>
+            <rect x="132" y="82" width="14" height="46" rx="3" style="fill:var(--fg)"/>
+            <path class="ln" d="M62 36 H118 M66 36 V44 M114 36 V44"/>
+            <circle class="mdot" id="md0" cx="66" cy="30" r="5"/>
+            <circle class="mdot" id="md1" cx="82" cy="30" r="5"/>
+            <circle class="mdot" id="md2" cx="98" cy="30" r="5"/>
+            <circle class="mdot" id="md3" cx="114" cy="30" r="5"/>
+            <text class="tm" x="90" y="110" text-anchor="middle">ileri ↑</text>
+            <path id="arL" class="accl" stroke-width="3.2" stroke-linecap="round" d=""/>
+            <path id="arR" class="accl" stroke-width="3.2" stroke-linecap="round" d=""/>
+            <text class="tn" id="arLt" x="16" y="198" text-anchor="middle">0</text>
+            <text class="tn" id="arRt" x="164" y="198" text-anchor="middle">0</text>
+          </svg>
+        </div>
+        <p class="verdict" id="verdict">Düz gider</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" aria-labelledby="olcu-h">
+    <div class="sec-head">
+      <p class="eyebrow">Teknik çizim · ölçüler cm · model değerleri</p>
+      <h2 id="olcu-h">Ölçüler</h2>
+      <p class="muted">Robotu üç yönden gör, sonra aşağıda her parçanın kendi ölçülerine bak. Kesikli çizgiler, üstteki parçaların altında kalan yerleri gösterir.</p>
+    </div>
+    <div class="drawing">
+      <div class="dwg">
+        <div class="row" role="group" aria-label="Görünüş seç">
+          <button class="btn" type="button" data-view="side" aria-pressed="true">Yandan</button>
+          <button class="btn" type="button" data-view="top" aria-pressed="false">Üstten</button>
+          <button class="btn" type="button" data-view="front" aria-pressed="false">Önden</button>
+        </div>
+        <div class="scroll dw">
+          <svg id="v-side" viewBox="0 0 716 300" role="img" aria-label="Robotun yandan teknik çizimi">
+            <!-- cetvel -->
+            <path class="ln" d="M30 230 V43 M30 230 H38 M30 213 H35 M30 196 H38 M30 179 H35 M30 162 H38 M30 145 H35 M30 128 H38 M30 111 H35 M30 94 H38 M30 77 H35 M30 60 H38 M30 43 H35"/>
+            <g class="tn" text-anchor="end">
+              <text x="25" y="234">0</text><text x="25" y="200">2</text><text x="25" y="166">4</text>
+              <text x="25" y="132">6</text><text x="25" y="98">8</text><text x="25" y="64">10</text>
+            </g>
+            <text class="tm" x="30" y="32" text-anchor="middle">cm</text>
+            <path class="beam" d="M38 154.35 H86 M38 89.75 H86 M38 54.7 H125"/>
+            <g transform="translate(36 0)">
+              <rect x="20" y="230" width="400" height="3" style="fill:var(--fg)"/>
+              <rect class="o" x="51.9" y="149.25" width="299.2" height="5.1"/>
+              <rect class="o" x="51.9" y="84.65" width="299.2" height="5.1"/>
+              <rect class="os" x="80.5" y="89.75" width="10.9" height="59.5"/>
+              <rect class="os" x="311.7" y="89.75" width="10.9" height="59.5"/>
+              <rect class="o" x="67.2" y="121.2" width="98.6" height="28.05" rx="2"/>
+              <path class="lm" d="M72 132.3 H161"/>
+              <rect class="o" x="228.6" y="138" width="74.8" height="2.75"/>
+              <rect class="os" x="244.8" y="97.2" width="28.9" height="40.8"/>
+              <path class="lm" d="M249 101 V134 M254.5 101 V134 M260 101 V134 M265.5 101 V134"/>
+              <rect class="os" x="286.8" y="121" width="14.4" height="17"/>
+              <rect class="os" x="105" y="76.15" width="6" height="8.5"/>
+              <rect class="os" x="206" y="76.15" width="6" height="8.5"/>
+              <rect class="o" x="100.7" y="73.4" width="116.6" height="2.75"/>
+              <rect class="os" x="133.5" y="58.98" width="83.3" height="14.42"/>
+              <rect class="o" x="91" y="54.7" width="27.2" height="18.7"/>
+              <rect class="os" x="283" y="76.15" width="5" height="8.5"/>
+              <rect class="os" x="324" y="76.15" width="5" height="8.5"/>
+              <rect class="o" x="280.5" y="73.4" width="51" height="2.75"/>
+              <rect class="os" x="298.7" y="62.9" width="11.2" height="10.5"/>
+              <rect class="os" x="313.8" y="64.9" width="7.6" height="8.5"/>
+              <rect class="os" x="169.2" y="154.7" width="119" height="38.4" rx="3"/>
+              <circle class="o" cx="252.5" cy="173.9" r="56.1"/>
+              <circle class="ln" cx="252.5" cy="173.9" r="38.3"/>
+              <circle class="ln" cx="252.5" cy="173.9" r="8.5"/>
+              <circle class="ln" cx="252.5" cy="150.9" r="6"/>
+              <circle class="ln" cx="274.4" cy="166.8" r="6"/>
+              <circle class="ln" cx="266" cy="192.5" r="6"/>
+              <circle class="ln" cx="239" cy="192.5" r="6"/>
+              <circle class="ln" cx="230.6" cy="166.8" r="6"/>
+              <rect class="os" x="77.1" y="154.35" width="10.9" height="28.9"/>
+              <rect class="o" x="62.1" y="183.25" width="40.8" height="3.4"/>
+              <rect class="os" x="73.15" y="186.65" width="18.7" height="5.1"/>
+              <rect class="o" x="76" y="191.75" width="12" height="22"/>
+              <circle class="o" cx="82.3" cy="213.85" r="16.15"/>
+              <circle class="ln" cx="82.3" cy="213.85" r="2.5"/>
+              <rect class="os" x="335.5" y="154.35" width="10.9" height="46.6"/>
+              <rect class="o" x="331.55" y="200.9" width="18.7" height="3.75"/>
+              <rect class="o" x="323.9" y="205" width="54.4" height="2.4"/>
+              <rect class="os" x="323.9" y="200.8" width="5.1" height="4.2"/>
+              <rect class="acc" x="364.4" y="207.4" width="9.5" height="10.7"/>
+              <path class="beam" d="M369.1 218.1 V229"/>
+              <path class="lm" d="M51.9 18 V36 M378.3 18 V36 M51.9 27 H378.3"/>
+              <text class="tn" x="215" y="20" text-anchor="middle">≈ 19,2 cm</text>
+              <path class="lm" d="M252.5 236 V266 M369.1 236 V266 M252.5 258 H369.1"/>
+              <circle class="acc" cx="252.5" cy="173.9" r="2.5"/>
+              <text class="tn" x="310.8" y="280" text-anchor="middle">6,7 cm</text>
+              <text class="tm" x="310.8" y="294" text-anchor="middle">aks → sensör (5–8 cm)</text>
+              <path class="lm" d="M424 68 L334 74"/>
+              <text class="t" x="430" y="72">Üst kat: Arduino, sensör kartı</text>
+              <path class="lm" d="M424 124 L306 137"/>
+              <text class="t" x="430" y="128">Ara kat: pil yuvası, L298N</text>
+              <path class="lm" d="M424 174 L311 174"/>
+              <text class="t" x="430" y="178">Alt: motorlar, tekerlekler</text>
+              <path class="lm" d="M424 224 L377 214"/>
+              <text class="t" x="430" y="222">Sensör yerden 5–10 mm</text>
+              <text class="tm" x="430" y="240">Kızılötesi ışık bandı görür</text>
+              <text class="tm" x="24" y="250">arka</text>
+              <text class="tm" x="416" y="250" text-anchor="end">ön →</text>
+            </g>
+            <text class="tm" x="44" y="290">Kırmızı kesikli çizgiler: alt plaka ≈ 4,4 · üst plaka ≈ 8,3 · en üst ≈ 10,3 cm</text>
+          </svg>
+
+          <svg id="v-top" viewBox="0 0 680 360" role="img" aria-label="Robotun üstten teknik çizimi" hidden>
+            <rect class="o" x="197.4" y="13.6" width="112.2" height="44.2" rx="6"/>
+            <path class="lm" d="M213 16 V55 M229 16 V55 M245 16 V55 M261 16 V55 M277 16 V55 M293 16 V55"/>
+            <rect class="o" x="197.4" y="282.2" width="112.2" height="44.2" rx="6"/>
+            <path class="lm" d="M213 285 V324 M229 285 V324 M245 285 V324 M261 285 V324 M277 285 V324 M293 285 V324"/>
+            <rect class="os" x="247.7" y="57.8" width="9.6" height="13.6"/>
+            <rect class="os" x="247.7" y="268.6" width="9.6" height="13.6"/>
+            <rect class="o" x="51.9" y="68" width="299.2" height="204" rx="27.2"/>
+            <rect class="dash" x="169.2" y="71.4" width="119" height="32.3"/>
+            <rect class="dash" x="169.2" y="236.3" width="119" height="32.3"/>
+            <rect class="dash" x="67.2" y="90.1" width="98.6" height="159.8"/>
+            <rect class="dash" x="228.6" y="133" width="74.8" height="74"/>
+            <rect class="dash" x="62.1" y="149.6" width="40.8" height="40.8"/>
+            <rect class="dash" x="331.55" y="107.1" width="18.7" height="125.8"/>
+            <rect class="o" x="100.7" y="124.6" width="116.6" height="90.8" rx="3"/>
+            <rect class="os" x="133.5" y="128.35" width="83.3" height="4.25"/>
+            <rect class="os" x="147.1" y="207.4" width="64.6" height="4.25"/>
+            <rect class="o" x="91" y="137.7" width="27.2" height="20.4"/>
+            <rect class="os" x="99.5" y="193" width="25.5" height="15.25"/>
+            <rect class="os" x="160" y="160" width="12" height="12"/>
+            <text class="tm" x="166" y="190" text-anchor="middle">Arduino</text>
+            <rect class="o" x="280.5" y="134.3" width="51" height="71.4" rx="2"/>
+            <rect class="os" x="282.4" y="147.9" width="4.3" height="44.2"/>
+            <g class="os">
+              <rect x="298.7" y="138.9" width="11.2" height="11.2"/><rect x="298.7" y="155.9" width="11.2" height="11.2"/>
+              <rect x="298.7" y="172.9" width="11.2" height="11.2"/><rect x="298.7" y="189.9" width="11.2" height="11.2"/>
+              <rect x="313.8" y="137.7" width="7.6" height="13.6"/><rect x="313.8" y="154.7" width="7.6" height="13.6"/>
+              <rect x="313.8" y="171.7" width="7.6" height="13.6"/><rect x="313.8" y="188.7" width="7.6" height="13.6"/>
+            </g>
+            <g class="acc">
+              <rect x="289.9" y="142.8" width="5.1" height="3.4"/><rect x="289.9" y="159.8" width="5.1" height="3.4"/>
+              <rect x="289.9" y="176.8" width="5.1" height="3.4"/><rect x="289.9" y="193.8" width="5.1" height="3.4"/>
+            </g>
+            <g class="o">
+              <rect x="351.1" y="122.8" width="27.2" height="17.9"/><rect x="351.1" y="148.3" width="27.2" height="17.9"/>
+              <rect x="351.1" y="173.8" width="27.2" height="17.9"/><rect x="351.1" y="199.3" width="27.2" height="17.9"/>
+            </g>
+            <g class="acc">
+              <circle cx="369.1" cy="131.75" r="3.2"/><circle cx="369.1" cy="157.25" r="3.2"/>
+              <circle cx="369.1" cy="182.75" r="3.2"/><circle cx="369.1" cy="208.25" r="3.2"/>
+            </g>
+            <g class="tn">
+              <text x="386" y="135.75">S1</text><text x="386" y="161.25">S2</text><text x="386" y="186.75">S3</text><text x="386" y="212.25">S4</text>
+            </g>
+            <path class="lm" d="M51.9 250 V354 M378.3 222 V354 M51.9 350 H378.3"/>
+            <text class="tn" x="215" y="344" text-anchor="middle">≈ 19,2 cm</text>
+            <path class="lm" d="M14 13.6 H197.4 M14 326.4 H197.4 M20 13.6 V326.4"/>
+            <text class="tn" transform="translate(13 170) rotate(-90)" text-anchor="middle">≈ 18,4 cm (tekerlekler dahil)</text>
+            <path class="lm" d="M34 68 H79 M34 272 H79 M42 68 V272"/>
+            <text class="tn" transform="translate(37 170) rotate(-90)" text-anchor="middle">12 cm plaka</text>
+            <path class="lm" d="M309.6 35.7 H426 M309.6 304.3 H426 M420 35.7 V304.3"/>
+            <text class="tn" x="430" y="166">15,8 cm</text>
+            <text class="tm" x="430" y="182">teker arası (merkezden)</text>
+            <text class="tm" x="322" y="30">sol teker</text>
+            <text class="tm" x="322" y="318">sağ teker</text>
+            <text class="tm" x="58" y="300">arka</text>
+            <text class="tm" x="378" y="300" text-anchor="end">ön →</text>
+            <text class="tm" x="430" y="236">kesikli: üst katın altında kalanlar</text>
+            <text class="tm" x="430" y="252">(motorlar, pil, L298N, sarhoş teker,</text>
+            <text class="tm" x="430" y="268">sensör çubuğu)</text>
+          </svg>
+
+          <svg id="v-front" viewBox="0 0 680 310" role="img" aria-label="Robotun önden teknik çizimi" hidden>
+            <path class="lm" d="M140 250 H540"/>
+            <rect x="323.85" y="250" width="32.3" height="3" style="fill:var(--fg)"/>
+            <rect class="o" x="183.6" y="137.8" width="44.2" height="112.2" rx="6"/>
+            <rect class="o" x="452.2" y="137.8" width="44.2" height="112.2" rx="6"/>
+            <path class="lm" d="M186 156 H225 M186 175 H225 M186 194 H225 M186 213 H225 M186 232 H225 M455 156 H494 M455 175 H494 M455 194 H494 M455 213 H494 M455 232 H494"/>
+            <rect class="os" x="227.8" y="189.1" width="13.6" height="9.6"/>
+            <rect class="os" x="438.6" y="189.1" width="13.6" height="9.6"/>
+            <rect class="os" x="241.4" y="174.7" width="32.3" height="38.4" rx="3"/>
+            <rect class="os" x="406.3" y="174.7" width="32.3" height="38.4" rx="3"/>
+            <rect class="o" x="238" y="169.25" width="204" height="5.1"/>
+            <rect class="os" x="283.55" y="174.35" width="10.9" height="46.55"/>
+            <rect class="os" x="385.55" y="174.35" width="10.9" height="46.55"/>
+            <rect class="o" x="277.1" y="220.9" width="125.8" height="3.8"/>
+            <g class="o">
+              <rect x="369.35" y="224.7" width="17.8" height="2.1"/><rect x="343.85" y="224.7" width="17.8" height="2.1"/>
+              <rect x="318.35" y="224.7" width="17.8" height="2.1"/><rect x="292.85" y="224.7" width="17.8" height="2.1"/>
+            </g>
+            <g class="acc">
+              <rect x="369.75" y="227.05" width="17" height="11.05"/><rect x="344.25" y="227.05" width="17" height="11.05"/>
+              <rect x="318.75" y="227.05" width="17" height="11.05"/><rect x="293.25" y="227.05" width="17" height="11.05"/>
+            </g>
+            <path class="beam" d="M378.25 238.1 V249 M352.75 238.1 V249 M327.25 238.1 V249 M301.75 238.1 V249"/>
+            <rect class="os" x="246.2" y="109.75" width="10.9" height="59.5"/>
+            <rect class="os" x="422.9" y="109.75" width="10.9" height="59.5"/>
+            <rect class="o" x="303" y="158" width="74" height="2.75"/>
+            <rect class="os" x="319.6" y="117.2" width="40.8" height="40.8"/>
+            <path class="lm" d="M326 120 V155 M333 120 V155 M340 120 V155 M347 120 V155 M354 120 V155"/>
+            <rect class="os" x="312.8" y="141" width="27.2" height="17"/>
+            <rect class="os" x="345.1" y="153.2" width="27.2" height="4.8"/>
+            <rect class="o" x="238" y="104.65" width="204" height="5.1"/>
+            <rect class="o" x="351.9" y="74.7" width="20.4" height="18.7"/>
+            <rect class="os" x="301.8" y="74.7" width="15.2" height="18.7"/>
+            <rect class="os" x="374" y="96.15" width="6.8" height="8.5"/>
+            <rect class="os" x="299.2" y="96.15" width="6.8" height="8.5"/>
+            <rect class="o" x="294.6" y="93.4" width="90.8" height="2.75"/>
+            <rect class="os" x="379.5" y="78.98" width="4.25" height="14.4"/>
+            <rect class="os" x="296.3" y="78.98" width="4.25" height="14.4"/>
+            <g class="os">
+              <rect x="359.9" y="82.9" width="11.2" height="10.5"/><rect x="342.9" y="82.9" width="11.2" height="10.5"/>
+              <rect x="325.9" y="82.9" width="11.2" height="10.5"/><rect x="308.9" y="82.9" width="11.2" height="10.5"/>
+            </g>
+            <g class="tn" text-anchor="middle">
+              <text x="378.25" y="266">S1</text><text x="352.75" y="266">S2</text><text x="327.25" y="266">S3</text><text x="301.75" y="266">S4</text>
+            </g>
+            <text class="tm" x="184" y="266">robotun sağı</text>
+            <text class="tm" x="496" y="266" text-anchor="end">robotun solu</text>
+            <path class="lm" d="M183.6 132 V34 M496.4 132 V34 M183.6 40 H496.4"/>
+            <text class="tn" x="340" y="34" text-anchor="middle">≈ 18,4 cm (tekerlekler dahil)</text>
+            <path class="lm" d="M205.7 254 V290 M474.3 254 V290 M205.7 284 H474.3"/>
+            <text class="tn" x="340" y="302" text-anchor="middle">15,8 cm teker arası (merkezden)</text>
+            <path class="lm" d="M140 74.7 H298 M150 74.7 V250"/>
+            <text class="tn" transform="translate(143 162) rotate(-90)" text-anchor="middle">≈ 10,3 cm</text>
+            <path class="lm" d="M386 86 H506"/>
+            <text class="t" x="512" y="90">Arduino + sensör kartı</text>
+            <path class="lm" d="M442 107 H506"/>
+            <text class="t" x="512" y="111">Üst plaka ≈ 8,3 cm</text>
+            <path class="lm" d="M442 172 L447 167 V130 H506"/>
+            <text class="t" x="512" y="134">Alt plaka ≈ 4,4 cm</text>
+          </svg>
+        </div>
+      </div>
+      <dl class="keys">
+        <div><dt>Dış ölçü (boy × en × yükseklik)</dt><dd>19,2 × 18,4 × 10,3<small>cm, tekerlekler ve sensörler dahil.</small></dd></div>
+        <div><dt>Plakaların yerden yüksekliği</dt><dd>4,4 · 8,3 cm<small>Alt plakayı motor ve tekerlek kaldırır: 3,25 (teker yarıçapı) + 1,1 (motorun yarısı).</small></dd></div>
+        <div><dt>Teker arası</dt><dd>15,8 cm<small>İki tekerleğin ortası arası.</small></dd></div>
+        <div><dt>Sensör aralığı</dt><dd>15 mm<small>19 mm bant için. Bant genişliğinden biraz az olsun.</small></dd></div>
+        <div><dt>Sensör yüksekliği</dt><dd>5–10 mm<small>Çok yüksekte zemin ve bant aynı görünür.</small></dd></div>
+        <div><dt>Aks → sensör</dt><dd>5–8 cm<small>Modelde 6,7 cm.</small></dd></div>
+      </dl>
+    </div>
+
+    <div class="sec-head">
+      <h3 class="sub">Parça parça ölçüler</h3>
+      <p class="muted">Her kartta parçanın iki yönden çizimi, ölçüleri ve nereye dikkat edeceğin var. Çizimler karta sığacak ölçekte; sağ üstteki çubuk 1 cm'yi gösterir.</p>
+      <p class="tags-legend"><span class="tag std">Standart ölçü</span> Her yerde aynı boyda satılan parça. <span class="tag est">Tahmini · cetvelle ölç</span> Kitten kite değişir, değer bizim modelimizden.</p>
+    </div>
+    <div class="pgrid" id="pgrid"></div>
+  </section>
+
+  <section class="sec" aria-labelledby="kablo-h">
+    <div class="sec-head">
+      <p class="eyebrow">Pin pin bağlantı</p>
+      <h2 id="kablo-h">Kablolama</h2>
+    </div>
+    <div class="scroll wide">
+      <svg viewBox="0 0 900 500" role="img" aria-label="Arduino, L298N ve sensör kartı arasındaki kablolar">
+        <!-- kablolar -->
+        <g class="wire">
+          <path d="M330 80 H560" style="stroke:var(--w-pwm)"/>
+          <path d="M330 106 H560" style="stroke:var(--w-in1)"/>
+          <path d="M330 132 H560" style="stroke:var(--w-in2)"/>
+          <path d="M330 158 H560" style="stroke:var(--w-in3)"/>
+          <path d="M330 184 H560" style="stroke:var(--w-in4)"/>
+          <path d="M330 210 H560" style="stroke:var(--w-pwm)"/>
+          <path d="M330 246 H560" style="stroke:var(--w-pwr)"/>
+          <path d="M330 272 H560" style="stroke:var(--w-gnd)"/>
+          <path d="M330 344 H560" style="stroke:var(--w-pwr)"/>
+          <path d="M330 368 H560" style="stroke:var(--w-gnd)"/>
+          <path d="M330 392 H560" style="stroke:var(--w-sig)"/>
+          <path d="M330 416 H560" style="stroke:var(--w-sig)"/>
+          <path d="M330 440 H560" style="stroke:var(--w-sig)"/>
+          <path d="M330 464 H560" style="stroke:var(--w-sig)"/>
+          <path d="M148 300 H200" stroke-width="5" style="stroke:var(--w-gnd)"/>
+          <path d="M710 100 C740 100 745 104 774 108" style="stroke:var(--w-mot)"/>
+          <path d="M710 128 C740 128 745 122 774 120" style="stroke:var(--w-mot)"/>
+          <path d="M710 200 C740 200 745 204 774 208" style="stroke:var(--w-mot)"/>
+          <path d="M710 228 C740 228 745 222 774 220" style="stroke:var(--w-mot)"/>
+          <path d="M710 352 H780" style="stroke:var(--w-mot)"/>
+          <path d="M710 388 H780" style="stroke:var(--w-mot)"/>
+          <path d="M710 424 H780" style="stroke:var(--w-mot)"/>
+          <path d="M710 460 H780" style="stroke:var(--w-mot)"/>
+        </g>
+        <!-- Arduino -->
+        <text class="th" x="265" y="34" text-anchor="middle">Arduino UNO</text>
+        <rect class="o" x="200" y="44" width="130" height="440" rx="8"/>
+        <g class="tn" text-anchor="end">
+          <text x="320" y="84">D5 ~</text><text x="320" y="110">D7</text><text x="320" y="136">D8</text>
+          <text x="320" y="162">D9</text><text x="320" y="188">D10</text><text x="320" y="214">D6 ~</text>
+          <text x="320" y="250">VIN</text><text x="320" y="276">GND</text>
+          <text x="320" y="348">5V</text><text x="320" y="372">GND</text>
+          <text x="320" y="396">A0</text><text x="320" y="420">A1</text><text x="320" y="444">A2</text><text x="320" y="468">A3</text>
+        </g>
+        <text class="tn" x="210" y="304">DC jak</text>
+        <text class="tn" x="210" y="434">USB</text>
+        <path class="lm" d="M170 430 H200"/>
+        <text class="tm" x="164" y="434" text-anchor="end">bilgisayar</text>
+        <text class="tm" x="164" y="450" text-anchor="end">(kod yüklerken)</text>
+        <!-- pil -->
+        <rect class="o" x="24" y="270" width="124" height="60" rx="6"/>
+        <text class="t" x="86" y="296" text-anchor="middle" font-weight="700">6 × AA pil</text>
+        <text class="tm" x="86" y="314" text-anchor="middle">≈ 9 V, barrel jak</text>
+        <!-- L298N -->
+        <text class="th" x="635" y="34" text-anchor="middle">L298N</text>
+        <rect class="o" x="560" y="44" width="150" height="256" rx="8"/>
+        <g class="tn">
+          <text x="570" y="84">ENA</text><text x="570" y="110">IN1</text><text x="570" y="136">IN2</text>
+          <text x="570" y="162">IN3</text><text x="570" y="188">IN4</text><text x="570" y="214">ENB</text>
+          <text x="570" y="250">12V</text><text x="570" y="276">GND</text>
+        </g>
+        <text class="tm" x="570" y="293">5V: boş bırak</text>
+        <g class="tn" text-anchor="end">
+          <text x="700" y="104">OUT1</text><text x="700" y="132">OUT2</text>
+          <text x="700" y="204">OUT3</text><text x="700" y="232">OUT4</text>
+        </g>
+        <circle class="o" cx="800" cy="114" r="26"/><text class="th" x="800" y="119" text-anchor="middle">M</text>
+        <text class="t" x="800" y="158" text-anchor="middle">Sol motor</text>
+        <circle class="o" cx="800" cy="214" r="26"/><text class="th" x="800" y="219" text-anchor="middle">M</text>
+        <text class="t" x="800" y="258" text-anchor="middle">Sağ motor</text>
+        <!-- sensör kartı -->
+        <rect class="o" x="560" y="312" width="150" height="172" rx="8"/>
+        <text class="th" x="700" y="334" text-anchor="end">Sensör kartı</text>
+        <g class="tn">
+          <text x="570" y="348">VCC</text><text x="570" y="372">GND</text>
+          <text x="570" y="396">OUT1</text><text x="570" y="420">OUT2</text><text x="570" y="444">OUT3</text><text x="570" y="468">OUT4</text>
+        </g>
+        <g>
+          <rect class="os" x="780" y="341" width="56" height="22" rx="4"/><text class="tn" x="808" y="356" text-anchor="middle">S1</text>
+          <rect class="os" x="780" y="377" width="56" height="22" rx="4"/><text class="tn" x="808" y="392" text-anchor="middle">S2</text>
+          <rect class="os" x="780" y="413" width="56" height="22" rx="4"/><text class="tn" x="808" y="428" text-anchor="middle">S3</text>
+          <rect class="os" x="780" y="449" width="56" height="22" rx="4"/><text class="tn" x="808" y="464" text-anchor="middle">S4</text>
+          <text class="tm" x="846" y="356">en sol</text>
+          <text class="tm" x="846" y="464">en sağ</text>
+        </g>
+        <!-- uç noktalar -->
+        <g style="fill:var(--fg)">
+          <circle cx="330" cy="80" r="3.5"/><circle cx="330" cy="106" r="3.5"/><circle cx="330" cy="132" r="3.5"/><circle cx="330" cy="158" r="3.5"/><circle cx="330" cy="184" r="3.5"/><circle cx="330" cy="210" r="3.5"/><circle cx="330" cy="246" r="3.5"/><circle cx="330" cy="272" r="3.5"/>
+          <circle cx="330" cy="344" r="3.5"/><circle cx="330" cy="368" r="3.5"/><circle cx="330" cy="392" r="3.5"/><circle cx="330" cy="416" r="3.5"/><circle cx="330" cy="440" r="3.5"/><circle cx="330" cy="464" r="3.5"/>
+          <circle cx="560" cy="80" r="3.5"/><circle cx="560" cy="106" r="3.5"/><circle cx="560" cy="132" r="3.5"/><circle cx="560" cy="158" r="3.5"/><circle cx="560" cy="184" r="3.5"/><circle cx="560" cy="210" r="3.5"/><circle cx="560" cy="246" r="3.5"/><circle cx="560" cy="272" r="3.5"/>
+          <circle cx="560" cy="344" r="3.5"/><circle cx="560" cy="368" r="3.5"/><circle cx="560" cy="392" r="3.5"/><circle cx="560" cy="416" r="3.5"/><circle cx="560" cy="440" r="3.5"/><circle cx="560" cy="464" r="3.5"/>
+        </g>
+      </svg>
+    </div>
+    <div class="legend">
+      <span><i style="background:var(--w-pwm)"></i>Hız (PWM): ENA, ENB</span>
+      <span><i style="background:var(--w-in1)"></i><i style="background:var(--w-in2)"></i><i style="background:var(--w-in3)"></i><i style="background:var(--w-in4)"></i>Yön: IN1–IN4</span>
+      <span><i style="background:var(--w-pwr)"></i>Güç</span>
+      <span><i style="background:var(--w-gnd)"></i>GND</span>
+      <span><i style="background:var(--w-sig)"></i>Sensör sinyali</span>
+    </div>
+    <ul class="warn">
+      <li><b>ENA ve ENB üzerindeki jumper'ları çıkar.</b> Her birinde iki pin kalır, biri 5V'tur. Kartın yazısına bak ya da multimetreyle ölç, Arduino kablosunu 5V olmayan pine tak.</li>
+      <li>L298N'in 5V jumper'ı takılı kalsın, 5V ucu boş kalsın.</li>
+      <li>GND'ler ortak olmalı. Arduino GND'si hem L298N'e hem sensör kartına gider.</li>
+      <li>Motor akımı Arduino'nun VIN pininden geçer. Robotu bir yere sıkıştırıp tekerlekleri zorla durdurma.</li>
+    </ul>
+  </section>
+
+  <section class="sec" aria-labelledby="adim-h">
+    <div class="sec-head">
+      <p class="eyebrow">Kurulum sırası</p>
+      <h2 id="adim-h">Adım adım</h2>
+    </div>
+    <ol class="steps">
+      <li><h3>Hazırlık</h3><p>Arduino IDE'yi kur, kartı USB ile tak. COM portu görünmezse CH340 sürücüsünü kur. Siyah izole bant ve beyaz kartonla deneme pisti yap.</p></li>
+      <li><h3>Alt kat</h3><p>Motorları plastik tutucularla alt katın altına vidala, tekerlekleri millere geçir. Sarhoş tekeri arkaya bir aralayıcıyla tak.</p></li>
+      <li><h3>Sensör çubuğu</h3><p>4 sensörü bir dondurma çubuğuna 15 mm arayla diz. Çubuğu iki aralayıcıyla alt katın önüne as: yerden 5–10 mm, aksın 5–8 cm önünde.</p></li>
+      <li><h3>Ara kat</h3><p>Pil yuvasını arkaya, L298N'i öne koy. ENA ve ENB jumper'larını çıkar.</p></li>
+      <li><h3>Üst kat</h3><p>Dört aralayıcıyla üst katı kur. Arduino'nun USB'si arkaya, sensör kartının trimpotları öne baksın.</p></li>
+      <li><h3>Kablolar</h3><p>Şemadaki gibi bağla, pili en son tak. Kabloları kablo bağıyla topla, tekerleklere değmesinler.</p></li>
+      <li><h3>Sensör testi · MOD 1</h3><p>Seri Monitör 9600. Her sensörü sırayla beyaz ve siyahın üstünde tut, işaret net değişene kadar kendi trimpotunu çevir.</p></li>
+      <li><h3>Motor testi · MOD 2</h3><p>Tekerlekler havada, pil takılı. Ters dönen motor için <code>SOL_TERS</code> ya da <code>SAG_TERS</code> ayarını <code>true</code> yap.</p></li>
+      <li><h3>Yarış · MOD 0</h3><p><code>TABAN_HIZ</code> 120 ile başla. Virajda kaçırıyorsa KP'yi artır, düzde zikzak çiziyorsa azalt. Sonra hızı adım adım yükselt.</p></li>
+    </ol>
+  </section>
+
+  <p class="foot">Model temsilidir. Kitteki parçaların gerçek ölçüleri biraz farklı olabilir, yerleşim önerilen düzendir. Simülasyon <code>cizgi_izleyen.ino</code> ile aynı kuralları ve aynı ayar adlarını kullanır.</p>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/environments/RoomEnvironment.js"></script>
+<script>
+(function () {
+  'use strict';
+// cizgi_izleyen.ino'daki ayarlar ve kurallar (birebir)
+const AYAR = { TABAN_HIZ: 140, KP: 45, VIRAJ_FRENI: 10, ARAMA_HIZI: 150, MAKS_HIZ: 255, TUM_SIYAH_DUR: 400, KAYIP_DUR: 3000 };
+const AGIRLIK = [-3, -1, 1, 3];
+// Robot ölçüleri (cm) ve basit motor modeli
+const GEO = { wheelR: 3.3, wheelBase: 15.8, sensorX: [2.25, 0.75, -0.75, -2.25], sensorZ: 9.7, lineHalf: 0.95, maxV: 70, dead: 40, tau: 0.08 };
+
+function cizgiIzle(s, st, now) {
+  let adet = 0;
+  for (let i = 0; i < 4; i++) if (s[i]) adet++;
+  const T = AYAR.TABAN_HIZ, A = AYAR.ARAMA_HIZI;
+  if (adet === 0) {
+    if (now - st.sonGorme > AYAR.KAYIP_DUR) return { sol: 0, sag: 0, kod: 'stop', hata: null };
+    if (st.sonHata < 0) return { sol: -A, sag: A, kod: 'araSol', hata: null };
+    if (st.sonHata > 0) return { sol: A, sag: -A, kod: 'araSag', hata: null };
+    return { sol: T, sag: T, kod: 'araDuz', hata: null };
+  }
+  st.sonGorme = now;
+  if (adet === 4) {
+    if (!st.tumSiyah) { st.tumSiyah = true; st.tumSiyahBaslangic = now; }
+    if (now - st.tumSiyahBaslangic > AYAR.TUM_SIYAH_DUR) return { sol: 0, sag: 0, kod: 'siyahDur', hata: null };
+    return { sol: T, sag: T, kod: 'kavsak', hata: null };
+  }
+  st.tumSiyah = false;
+  let toplam = 0;
+  for (let i = 0; i < 4; i++) if (s[i]) toplam += AGIRLIK[i];
+  const hata = toplam / adet;
+  st.sonHata = hata;
+  const taban = Math.trunc(T - AYAR.VIRAJ_FRENI * Math.abs(hata));
+  const duzeltme = Math.trunc(AYAR.KP * hata);
+  return { sol: taban + duzeltme, sag: taban - duzeltme, kod: 'izle', hata };
+}
+
+// Kapalı Catmull-Rom eğrisi, ~1 cm aralıkla örneklenir. Noktalar [x, z].
+function buildTrack(ctrl) {
+  const n = ctrl.length, dense = [];
+  for (let i = 0; i < n; i++) {
+    const p0 = ctrl[(i - 1 + n) % n], p1 = ctrl[i], p2 = ctrl[(i + 1) % n], p3 = ctrl[(i + 2) % n];
+    for (let k = 0; k < 60; k++) {
+      const t = k / 60, t2 = t * t, t3 = t2 * t;
+      const f = (a, b, c, d) => 0.5 * (2 * b + (-a + c) * t + (2 * a - 5 * b + 4 * c - d) * t2 + (-a + 3 * b - 3 * c + d) * t3);
+      dense.push([f(p0[0], p1[0], p2[0], p3[0]), f(p0[1], p1[1], p2[1], p3[1])]);
+    }
+  }
+  let L = 0;
+  const cum = [0];
+  for (let i = 1; i <= dense.length; i++) {
+    const a = dense[i - 1], b = dense[i % dense.length];
+    L += Math.hypot(b[0] - a[0], b[1] - a[1]);
+    cum.push(L);
+  }
+  const N = Math.round(L), pts = [];
+  let j = 0;
+  for (let k = 0; k < N; k++) {
+    const d = (k / N) * L;
+    while (cum[j + 1] < d) j++;
+    const a = dense[j], b = dense[(j + 1) % dense.length], u = (d - cum[j]) / (cum[j + 1] - cum[j] || 1);
+    pts.push([a[0] + (b[0] - a[0]) * u, a[1] + (b[1] - a[1]) * u]);
+  }
+  const tan = pts.map((p, k) => {
+    const a = pts[(k - 1 + N) % N], b = pts[(k + 1) % N], l = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    return [(b[0] - a[0]) / l, (b[1] - a[1]) / l];
+  });
+  return { pts, tan, N, len: L, band: { half: 1.0, across: 6 } };
+}
+
+function segDist(px, pz, a, b) {
+  const dx = b[0] - a[0], dz = b[1] - a[1];
+  const l2 = dx * dx + dz * dz;
+  let u = ((px - a[0]) * dx + (pz - a[1]) * dz) / l2;
+  u = u < 0 ? 0 : u > 1 ? 1 : u;
+  return Math.hypot(px - a[0] - dx * u, pz - a[1] - dz * u);
+}
+
+function onLine(tr, px, pz) {
+  const p0 = tr.pts[0], t0 = tr.tan[0];
+  const rx = px - p0[0], rz = pz - p0[1];
+  if (Math.abs(rx * t0[0] + rz * t0[1]) < tr.band.half && Math.abs(rx * -t0[1] + rz * t0[0]) < tr.band.across) return true;
+  for (let i = 0; i < tr.N; i++) {
+    if (segDist(px, pz, tr.pts[i], tr.pts[(i + 1) % tr.N]) < GEO.lineHalf) return true;
+  }
+  return false;
+}
+
+function newSim(tr) {
+  const k = tr.N - 30, p = tr.pts[k], t = tr.tan[k];
+  return {
+    x: p[0], z: p[1], th: Math.atan2(t[0], t[1]), vL: 0, vR: 0, t: 0, idx: k,
+    st: { sonHata: 0, sonGorme: 0, tumSiyah: false, tumSiyahBaslangic: 0 },
+    sens: [false, false, false, false], out: { sol: 0, sag: 0, kod: 'izle', hata: 0 },
+    spinL: 0, spinR: 0, lapStart: null, laps: [], fell: false
+  };
+}
+
+function sensorWorld(sim, i) {
+  const fx = Math.sin(sim.th), fz = Math.cos(sim.th), lx = Math.cos(sim.th), lz = -Math.sin(sim.th);
+  return [sim.x + lx * GEO.sensorX[i] + fx * GEO.sensorZ, sim.z + lz * GEO.sensorX[i] + fz * GEO.sensorZ];
+}
+
+function simStep(sim, tr, dt, bounds) {
+  for (let i = 0; i < 4; i++) { const p = sensorWorld(sim, i); sim.sens[i] = onLine(tr, p[0], p[1]); }
+  const out = cizgiIzle(sim.sens, sim.st, sim.t * 1000);
+  sim.out = out;
+  const hedef = pwm => {
+    const p = Math.max(-AYAR.MAKS_HIZ, Math.min(AYAR.MAKS_HIZ, pwm));
+    return Math.abs(p) < GEO.dead ? 0 : GEO.maxV * p / 255;
+  };
+  const a = Math.min(1, dt / GEO.tau);
+  sim.vL += (hedef(out.sol) - sim.vL) * a;
+  sim.vR += (hedef(out.sag) - sim.vR) * a;
+  const v = (sim.vL + sim.vR) / 2, w = (sim.vR - sim.vL) / GEO.wheelBase;
+  sim.th += w * dt;
+  sim.x += Math.sin(sim.th) * v * dt;
+  sim.z += Math.cos(sim.th) * v * dt;
+  sim.spinL += sim.vL * dt / GEO.wheelR;
+  sim.spinR += sim.vR * dt / GEO.wheelR;
+  sim.t += dt;
+  // Tur sayacı: robotun pistteki en yakın noktası başlangıç çizgisini geçti mi
+  let best = sim.idx, bd = 1e9;
+  for (let k = -25; k <= 25; k++) {
+    const j = (sim.idx + k + tr.N) % tr.N, p = tr.pts[j];
+    const d = (p[0] - sim.x) ** 2 + (p[1] - sim.z) ** 2;
+    if (d < bd) { bd = d; best = j; }
+  }
+  if (sim.idx > tr.N * 0.8 && best < tr.N * 0.2) {
+    if (sim.lapStart !== null) sim.laps.push(sim.t - sim.lapStart);
+    sim.lapStart = sim.t;
+  }
+  sim.idx = best;
+  if (bounds && (Math.abs(sim.x - bounds.cx) > bounds.hw || Math.abs(sim.z - bounds.cz) > bounds.hh)) sim.fell = true;
+}
+
+  const $ = (s) => document.querySelector(s);
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const fmt = (n) => (Math.round(n * 100) / 100).toLocaleString('tr-TR', { maximumFractionDigits: 2 }).replace('-', '−');
+  const clampPwm = (v) => Math.max(-AYAR.MAKS_HIZ, Math.min(AYAR.MAKS_HIZ, v));
+
+  const TRACK = buildTrack([
+    [-70, -40], [-20, -46], [30, -44], [70, -36], [84, -12], [72, 10], [48, 14], [34, 32], [10, 44],
+    [-16, 38], [-26, 16], [-44, 8], [-66, 18], [-84, 4], [-84, -24]
+  ]);
+  const BOUNDS = (() => {
+    let x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9;
+    for (const p of TRACK.pts) { x0 = Math.min(x0, p[0]); x1 = Math.max(x1, p[0]); z0 = Math.min(z0, p[1]); z1 = Math.max(z1, p[1]); }
+    return { cx: (x0 + x1) / 2, cz: (z0 + z1) / 2, hw: (x1 - x0) / 2 + 24, hh: (z1 - z0) / 2 + 24 };
+  })();
+
+  function verdict(out) {
+    switch (out.kod) {
+      case 'izle': {
+        if (out.hata === 0) return 'Düz gider';
+        const yon = out.hata < 0 ? 'sola' : 'sağa';
+        return Math.abs(out.hata) >= 2 ? 'Sert ' + yon + ' döner' : 'Hafif ' + yon + ' döner';
+      }
+      case 'araSol': return 'Çizgi kayboldu: yerinde sola döner';
+      case 'araSag': return 'Çizgi kayboldu: yerinde sağa döner';
+      case 'araDuz': return 'Çizgi kayboldu: düz devam eder';
+      case 'kavsak': return 'Kavşak: düz geçer';
+      case 'siyahDur': return '4 sensör uzun süre siyah: durdu';
+      case 'stop': return '3 saniyedir çizgi yok: durdu';
+    }
+    return '';
+  }
+
+  // ---------------- Açıklama: bandı kaydır ----------------
+  const SENS_MM = [-22.5, -7.5, 7.5, 22.5];
+  const expSt = { sonHata: 0, sonGorme: 0, tumSiyah: false, tumSiyahBaslangic: 0 };
+  const linePos = $('#line-pos');
+
+  function arrowPath(x, pwm) {
+    const L = Math.min(255, Math.abs(pwm)) / 255 * 72;
+    if (L < 3) return '';
+    const dir = pwm > 0 ? -1 : 1, y0 = 105, y1 = y0 + dir * L;
+    return 'M' + x + ' ' + y0 + ' L' + x + ' ' + y1 + ' M' + (x - 6) + ' ' + (y1 - dir * 8) + ' L' + x + ' ' + y1 + ' L' + (x + 6) + ' ' + (y1 - dir * 8);
+  }
+
+  function renderExplainer() {
+    const pos = parseFloat(linePos.value);
+    $('#line-pos-out').textContent = (pos > 0 ? '+' : '') + fmt(pos) + ' mm';
+    const tx = 280 + pos * 6;
+    $('#tape').setAttribute('x', (tx - 57).toFixed(1));
+    $('#tape-label').setAttribute('x', tx.toFixed(1));
+    const s = SENS_MM.map((m) => Math.abs(m - pos) <= 9.5);
+    s.forEach((on, i) => { $('#sd' + i).classList.toggle('on', on); $('#md' + i).classList.toggle('on', on); });
+    const out = cizgiIzle(s, expSt, 0);
+    const T = AYAR.TABAN_HIZ, KP = AYAR.KP, VF = AYAR.VIRAJ_FRENI;
+    const lim = (v) => (clampPwm(v) !== v ? fmt(v) + ' → ' + fmt(clampPwm(v)) + ' (sınır)' : fmt(v));
+    let rows;
+    if (out.kod === 'izle') {
+      const terms = [];
+      s.forEach((v, i) => { if (v) terms.push(AGIRLIK[i]); });
+      const sum = terms.map((t, i) => (i === 0 ? fmt(t) : (t < 0 ? ' − ' + fmt(-t) : ' + ' + fmt(t)))).join('');
+      const taban = Math.trunc(T - VF * Math.abs(out.hata)), duz = Math.trunc(KP * out.hata);
+      rows = [
+        ['gören', s.map((v, i) => (v ? 'S' + (i + 1) : null)).filter(Boolean).join(' ')],
+        ['hata', '(' + sum + ') / ' + terms.length + ' = ' + fmt(out.hata)],
+        ['taban', T + ' − ' + VF + ' × ' + fmt(Math.abs(out.hata)) + ' = ' + taban],
+        ['düzeltme', fmt(KP) + ' × ' + fmt(out.hata) + ' = ' + fmt(duz)],
+        ['sol motor', taban + (duz < 0 ? ' − ' : ' + ') + Math.abs(duz) + ' = ' + lim(out.sol)],
+        ['sağ motor', taban + (duz < 0 ? ' + ' : ' − ') + Math.abs(duz) + ' = ' + lim(out.sag)]
+      ];
+    } else {
+      const side = expSt.sonHata < 0 ? 'solda' : expSt.sonHata > 0 ? 'sağda' : 'ortada';
+      rows = [
+        ['gören', 'hiçbiri'],
+        ['en son', 'çizgi ' + side + ' görüldü'],
+        ['sol motor', fmt(out.sol)],
+        ['sağ motor', fmt(out.sag)]
+      ];
+    }
+    $('#calc').innerHTML = rows.map((r) => '<div><dt>' + r[0] + '</dt><dd>' + r[1] + '</dd></div>').join('');
+    const sol = clampPwm(out.sol), sag = clampPwm(out.sag);
+    $('#arL').setAttribute('d', arrowPath(16, sol));
+    $('#arR').setAttribute('d', arrowPath(164, sag));
+    $('#arLt').textContent = fmt(sol);
+    $('#arRt').textContent = fmt(sag);
+    $('#verdict').textContent = verdict(out);
+  }
+  linePos.addEventListener('input', renderExplainer);
+  renderExplainer();
+
+  // ---------------- Ölçüler: görünüş seçici ----------------
+  const viewBtns = Array.from(document.querySelectorAll('[data-view]'));
+  viewBtns.forEach((b) => b.addEventListener('click', () => {
+    viewBtns.forEach((o) => o.setAttribute('aria-pressed', String(o === b)));
+    ['side', 'top', 'front'].forEach((v) => { $('#v-' + v).hidden = v !== b.dataset.view; });
+  }));
+
+  // ---------------- Ölçüler: parça kartları (cm) ----------------
+  const api = {};
+  const hexPts = (cx, cy, r) => [0, 1, 2, 3, 4, 5].map((k) => [cx + r * Math.cos(k * Math.PI / 3), cy + r * Math.sin(k * Math.PI / 3)]);
+  const plateHoles = [];
+  for (let i = -3; i <= 3; i++) for (let j = -5; j <= 5; j++) {
+    const hx = j * 1.5, hy = i * 1.5;
+    if (Math.abs(hx) > 8.8 - 1.2 || Math.abs(hy) > 6 - 1.2) continue;
+    plateHoles.push(['circle', 8.8 + hx, 6 + hy, 0.2, 'ln']);
+  }
+  const TRIM = [0.6, 1.6, 2.6, 3.6];
+  const wheelHoles = [0, 1, 2, 3, 4].map((k) => ['circle', 3.25 + 1.35 * Math.cos(k * 2 * Math.PI / 5 - Math.PI / 2), 3.25 + 1.35 * Math.sin(k * 2 * Math.PI / 5 - Math.PI / 2), 0.42, 'ln']);
+  const CELLS = [0, 1, 2, 3, 4, 5];
+
+  const PCARDS = [
+    { n: 1, name: 'Arduino UNO', tag: 'std', layout: 'col',
+      views: [
+        { t: 'ÜSTTEN', w: 6.86, h: 5.34, dw: '6,86 cm', dh: '5,34 cm', s: [
+          ['rect', 0, 0, 6.86, 5.34, 'o', 0.15],
+          ['rect', 1.75, 0.12, 4.75, 0.25, 'os'],
+          ['rect', 2.6, 4.97, 4.0, 0.25, 'os'],
+          ['rect', -0.63, 0.95, 1.63, 1.2, 'os'],
+          ['rect', -0.2, 3.9, 1.45, 0.9, 'os'],
+          ['rect', 3.75, 2.3, 0.7, 0.7, 'os'],
+          ['text', 0.1, 2.6, 'USB', 'tm', 'start'],
+          ['text', 0.1, 3.7, 'DC jak', 'tm', 'start'],
+          ['text', 4.1, 0.8, 'dijital pinler', 'tm'],
+          ['text', 4.6, 4.75, 'güç · analog pinler', 'tm']] },
+        { t: 'YANDAN', w: 6.86, h: 1.5, dw: '6,86 cm', dh: '≈ 1,5 cm', s: [
+          ['rect', 1.75, 0.25, 4.75, 0.85, 'os'],
+          ['rect', -0.63, 0, 1.63, 1.1, 'os'],
+          ['rect', 0, 1.1, 6.86, 0.16, 'o'],
+          ['line', 2, 1.26, 2, 1.5, 'ln'], ['line', 3.2, 1.26, 3.2, 1.5, 'ln'], ['line', 4.4, 1.26, 4.4, 1.5, 'ln'], ['line', 5.6, 1.26, 5.6, 1.5, 'ln']] }
+      ],
+      list: [['Boy', '6,86 cm'], ['En', '5,34 cm'], ['Yükseklik', '≈ 1,5 cm'], ['USB taşması', '≈ 0,6 cm']],
+      note: 'Resmi UNO ölçüsü, CH340\'lı sürüm de aynı boyda. USB girişi kartın kenarından taşar, plakaya koyarken arkada pay bırak.' },
+
+    { n: 2, name: 'L298N motor sürücü', tag: 'std', layout: 'row',
+      views: [
+        { t: 'ÜSTTEN', w: 4.3, h: 4.3, dw: '4,3 cm', dh: '4,3 cm', s: [
+          ['rect', 0, 0, 4.3, 4.3, 'o', 0.1],
+          ['rect', 0.95, 0.6, 2.4, 1.7, 'os'],
+          ['line', 1.3, 0.6, 1.3, 2.3, 'lm'], ['line', 1.75, 0.6, 1.75, 2.3, 'lm'], ['line', 2.2, 0.6, 2.2, 2.3, 'lm'], ['line', 2.65, 0.6, 2.65, 2.3, 'lm'], ['line', 3.1, 0.6, 3.1, 2.3, 'lm'],
+          ['rect', 0, 1.6, 0.85, 1.1, 'os'],
+          ['rect', 3.45, 1.6, 0.85, 1.1, 'os'],
+          ['rect', 0.6, 3.45, 1.6, 0.85, 'os'],
+          ['rect', 2.45, 3.8, 1.6, 0.3, 'os']] },
+        { t: 'ÖNDEN', w: 4.3, h: 2.7, dw: '4,3 cm', dh: '≈ 2,7 cm', s: [
+          ['rect', 0.95, 0, 2.4, 2.3, 'os'],
+          ['line', 1.3, 0.1, 1.3, 2.2, 'lm'], ['line', 1.75, 0.1, 1.75, 2.2, 'lm'], ['line', 2.2, 0.1, 2.2, 2.2, 'lm'], ['line', 2.65, 0.1, 2.65, 2.2, 'lm'], ['line', 3.1, 0.1, 3.1, 2.2, 'lm'],
+          ['rect', 0.6, 1.3, 1.6, 1.0, 'os'],
+          ['rect', 0, 2.3, 4.3, 0.16, 'o'],
+          ['line', 0.5, 2.46, 0.5, 2.7, 'ln'], ['line', 1.6, 2.46, 1.6, 2.7, 'ln'], ['line', 2.8, 2.46, 2.8, 2.7, 'ln'], ['line', 3.8, 2.46, 3.8, 2.7, 'ln']] }
+      ],
+      list: [['En', '4,3 cm'], ['Boy', '4,3 cm'], ['Yükseklik', '≈ 2,7 cm'], ['En yüksek yer', 'soğutucu']],
+      note: 'Siyah soğutucu en yüksek kısım. Kat arası en az ≈ 3 cm olmalı ki üst plaka soğutucuya değmesin.' },
+
+    { n: 3, name: 'Sensör kontrol kartı', tag: 'est', layout: 'row',
+      views: [
+        { t: 'ÜSTTEN', w: 4.2, h: 3.0, dw: '≈ 4,2 cm', dh: '≈ 3,0 cm', s: [['rect', 0, 0, 4.2, 3.0, 'o', 0.1]]
+          .concat(...TRIM.map((c) => [['rect', c - 0.4, 0, 0.8, 0.45, 'os'], ['rect', c - 0.33, 0.6, 0.66, 0.66, 'os'], ['circle', c, 0.93, 0.2, 'ln'], ['rect', c - 0.1, 1.5, 0.2, 0.3, 'acc']]))
+          .concat([['rect', 0.8, 2.6, 2.6, 0.25, 'os']]) },
+        { t: 'ÖNDEN', w: 4.2, h: 1.15, dw: '≈ 4,2 cm', dh: '≈ 1,1 cm', s: TRIM.map((c) => ['rect', c - 0.33, 0.13, 0.66, 0.62, 'os'])
+          .concat([['rect', 0, 0.75, 4.2, 0.16, 'o'], ['line', 0.9, 0.91, 0.9, 1.15, 'ln'], ['line', 2.1, 0.91, 2.1, 1.15, 'ln'], ['line', 3.3, 0.91, 3.3, 1.15, 'ln']]) }
+      ],
+      list: [['En', '≈ 4,2 cm'], ['Boy', '≈ 3,0 cm'], ['Yükseklik', '≈ 1,1 cm'], ['Trimpot', '4 adet']],
+      note: 'Bu kartın boyu üreticiye göre değişir, kendininkini ölç. Trimpotlar öne baksın ki tornavidayla kolay ayarlansın.' },
+
+    { n: 4, name: 'Kızılötesi sensör (1 adet)', tag: 'std', layout: 'col',
+      views: [
+        { t: 'ÜSTTEN', w: 3.2, h: 1.05, dw: '≈ 3,2 cm', dh: '≈ 1,0 cm', s: [
+          ['rect', 0, 0, 3.2, 1.05, 'o', 0.08],
+          ['rect', 2.55, 0.025, 0.56, 1.0, 'dash'],
+          ['rect', 0.05, 0.2, 0.3, 0.65, 'os'],
+          ['circle', 1.3, 0.52, 0.15, 'ln'],
+          ['rect', 1.9, 0.38, 0.3, 0.28, 'acc']] },
+        { t: 'YANDAN', w: 3.2, h: 0.77, dw: '≈ 3,2 cm', dh: '≈ 0,8 cm', s: [
+          ['rect', 0.05, -0.25, 0.3, 0.25, 'os'],
+          ['rect', 0, 0, 3.2, 0.12, 'o'],
+          ['rect', 2.55, 0.12, 0.56, 0.65, 'acc'],
+          ['line', 2.83, 0.77, 2.83, 1.47, 'beam'],
+          ['line', -0.2, 1.47, 3.4, 1.47, 'ln'],
+          ['text', 1.6, 1.25, 'yerden 5–10 mm', 'tm'],
+          ['text', -0.2, 1.8, 'zemin', 'tm', 'start']] }
+      ],
+      list: [['Boy', '≈ 3,2 cm'], ['En', '≈ 1,0 cm'], ['Kalınlık', '≈ 0,8 cm'], ['Yerden', '5–10 mm']],
+      note: 'Kesikli kutu, kartın altına bakan sensör gözü (çoğunlukla TCRT5000). 4 tanesi 15 mm arayla dizilince aralarında ≈ 5 mm boşluk kalır.' },
+
+    { n: 4, name: 'Sensör çubuğu (dondurma çubuğu)', tag: 'std', layout: 'col',
+      views: [
+        { t: 'ÜSTTEN', w: 11.4, h: 1.0, dw: '11,4 cm', dh: '1,0 cm', s: [
+          ['rect', 0, 0, 11.4, 1.0, 'o', 0.5],
+          ['line', 5.7, -0.15, 5.7, 1.15, 'dash'],
+          ['circle', 3.45, 0.5, 0.13, 'acc'], ['circle', 4.95, 0.5, 0.13, 'acc'], ['circle', 6.45, 0.5, 0.13, 'acc'], ['circle', 7.95, 0.5, 0.13, 'acc'],
+          ['hdim', 4.95, 6.45, -0.55, '15 mm'],
+          ['hdim', 3.45, 7.95, -1.35, '45 mm'],
+          ['text', 5.7, 1.75, 'orta', 'tm']] },
+        { t: 'YANDAN', w: 11.4, h: 0.2, dw: null, dh: '0,2 cm', s: [['rect', 0, 0, 11.4, 0.2, 'o', 0.1]] }
+      ],
+      list: [['Boy', '11,4 cm'], ['En', '1,0 cm'], ['Kalınlık', '0,2 cm'], ['İşaretler', 'ortadan ±7,5 ve ±22,5 mm']],
+      note: 'Önce ortayı işaretle. Ortadan 7,5 mm sağa ve sola iç sensörler, 22,5 mm sağa ve sola dış sensörler gelir. Uzun gelirse kısalt, modelde 7,4 cm.' },
+
+    { n: 5, name: 'Redüktörlü motor', tag: 'std', layout: 'col',
+      views: [
+        { t: 'YANDAN', w: 7.0, h: 2.25, dw: '≈ 7,0 cm', dh: '2,25 cm', s: [
+          ['rect', 0, 0, 7.0, 2.25, 'os', 0.2],
+          ['line', 4.4, 0, 4.4, 2.25, 'lm'],
+          ['circle', 3.2, 0.5, 0.14, 'ln'], ['circle', 3.2, 1.75, 0.14, 'ln'],
+          ['circle', 5.9, 1.125, 0.42, 'o'], ['circle', 5.9, 1.125, 0.15, 'ln'],
+          ['text', 1.9, 1.25, 'motor', 'tm'],
+          ['text', 4.95, 2.0, 'dişli', 'tm']] },
+        { t: 'ÜSTTEN', w: 7.0, h: 3.7, dw: '≈ 7,0 cm', dh: '≈ 3,7 cm', s: [
+          ['rect', 0, 0.9, 7.0, 1.9, 'os', 0.2],
+          ['rect', 5.62, 0, 0.56, 3.7, 'o'],
+          ['text', 2.4, 1.95, '1,9 cm kalınlık', 'tm'],
+          ['text', 5.4, 0.45, 'mil', 'tm', 'end']] }
+      ],
+      list: [['Boy', '≈ 7,0 cm'], ['Yükseklik', '≈ 2,25 cm'], ['Kalınlık', '≈ 1,9 cm'], ['Mil', 'iki yanda ≈ 0,9 cm']],
+      note: '6 V, 250 devir/dakika. Mil iki yandan çıkar, tekerlek dış taraftakine takılır. Mil ortası motorun ön ucundan ≈ 1,1 cm geride.' },
+
+    { n: 6, name: 'Tekerlek', tag: 'std', layout: 'row',
+      views: [
+        { t: 'YANDAN', w: 6.5, h: 6.5, dw: 'Ø 6,5 cm', dh: null, s: [['circle', 3.25, 3.25, 3.25, 'o'], ['circle', 3.25, 3.25, 2.2, 'ln']]
+          .concat(wheelHoles, [['circle', 3.25, 3.25, 0.5, 'os']]) },
+        { t: 'ÖNDEN', w: 2.6, h: 6.5, dw: '2,6 cm', dh: '6,5 cm', s: [['rect', 0, 0, 2.6, 6.5, 'o', 0.35]]
+          .concat([1, 2, 3, 4, 5].map((y) => ['line', 0.2, y + 0.25, 2.4, y + 0.25, 'lm'])) }
+      ],
+      list: [['Çap', '≈ 6,5 cm'], ['Genişlik', '≈ 2,6 cm'], ['Çevre', '≈ 20,4 cm'], ['En fazla hız', '≈ 85 cm/sn']],
+      note: 'Tekerlek bir tur dönünce robot ≈ 20,4 cm gider (π × 6,5). Motor dakikada 250 tur atarsa bu saniyede ≈ 85 cm eder; yük ve pil yüzünden gerçek hız bunun altında kalır.' },
+
+    { n: 7, name: 'Sarhoş teker', tag: 'est', layout: 'row',
+      views: [
+        { t: 'YANDAN', w: 2.4, h: 2.8, dw: '≈ 2,4 cm', dh: '≈ 2,8 cm', s: [
+          ['rect', 0, 0, 2.4, 0.2, 'o'],
+          ['rect', 0.75, 0.2, 0.9, 0.25, 'os'],
+          ['poly', [[0.85, 0.45], [1.55, 0.45], [1.75, 1.85], [1.15, 1.85]], 'os'],
+          ['circle', 1.45, 1.85, 0.95, 'o'],
+          ['circle', 1.45, 1.85, 0.15, 'ln']] },
+        { t: 'ÜSTTEN', w: 2.4, h: 2.4, dw: '≈ 2,4 cm', dh: '≈ 2,4 cm', s: [
+          ['rect', 0, 0, 2.4, 2.4, 'o', 0.15],
+          ['circle', 0.35, 0.35, 0.15, 'ln'], ['circle', 2.05, 0.35, 0.15, 'ln'], ['circle', 0.35, 2.05, 0.15, 'ln'], ['circle', 2.05, 2.05, 0.15, 'ln'],
+          ['circle', 1.2, 1.2, 0.45, 'ln']] }
+      ],
+      list: [['Yükseklik', '≈ 2,8 cm'], ['Tabla', '≈ 2,4 × 2,4 cm'], ['Teker çapı', '≈ 1,9 cm'], ['Gereken boy', '≈ 4,4 cm']],
+      note: 'Robotun düz durması için sarhoş teker ile üstündeki aralayıcının toplamı, alt plakanın yerden yüksekliğine (≈ 4,4 cm) eşit olmalı. Teker 2,8 cm ise araya ≈ 1,6 cm aralayıcı gerekir.' },
+
+    { n: 8, name: '6\'lı AA pil yuvası', tag: 'est', layout: 'col',
+      views: [
+        { t: 'ÜSTTEN', w: 9.4, h: 5.8, dw: '≈ 9,4 cm', dh: '≈ 5,8 cm', s: [['rect', 0, 0, 9.4, 5.8, 'os', 0.2]]
+          .concat(CELLS.map((i) => ['rect', 0.25 + i * 1.5, 0.4, 1.4, 5.0, 'o', 0.7]), CELLS.map((i) => ['text', 0.95 + i * 1.5, i % 2 ? 5.0 : 1.15, '+', 'tn'])) },
+        { t: 'ÖNDEN', w: 9.4, h: 1.7, dw: '≈ 9,4 cm', dh: '≈ 1,7 cm', s: [['rect', 0, 0.7, 9.4, 1.0, 'os', 0.1]]
+          .concat(CELLS.map((i) => ['circle', 0.95 + i * 1.5, 0.73, 0.72, 'o'])) }
+      ],
+      list: [['Boy', '≈ 9,4 cm'], ['En', '≈ 5,8 cm'], ['Yükseklik', '≈ 1,7 cm'], ['AA pil', 'Ø 1,45 × 5,05 cm']],
+      note: 'Yassı (6 pil yan yana) tip çizildi. Kitteki yuva iki katlıysa (3 + 3) yaklaşık 5,8 × 4,7 × 3,1 cm olur; o zaman kat arasına sığıp sığmadığını kontrol et.' },
+
+    { n: 9, name: 'Pleksi plaka (2 adet)', tag: 'est', layout: 'col',
+      views: [
+        { t: 'ÜSTTEN', w: 17.6, h: 12, dw: '≈ 17,6 cm', dh: '≈ 12 cm', s: [['rect', 0, 0, 17.6, 12, 'o', 1.6]].concat(plateHoles) },
+        { t: 'YANDAN', w: 17.6, h: 0.3, dw: null, dh: '0,3 cm', s: [['rect', 0, 0, 17.6, 0.3, 'o']] }
+      ],
+      list: [['Boy', '≈ 17,6 cm'], ['En', '≈ 12 cm'], ['Kalınlık', '≈ 3 mm'], ['Delik aralığı', '1,5 cm (modelde)']],
+      note: 'Kitteki plakayı cetvelle ölç, delik yerleri de farklı olabilir. Robotun en geniş yeri plaka değil tekerleklerdir (≈ 18,4 cm).' },
+
+    { n: 9, name: 'Aralayıcı', tag: 'est', layout: 'row',
+      views: [
+        { t: 'YANDAN', w: 0.578, h: 3.5, dw: null, dh: '≈ 3,5 cm', s: [
+          ['rect', 0, 0, 0.578, 3.5, 'os'],
+          ['line', 0.145, 0, 0.145, 3.5, 'lm'], ['line', 0.433, 0, 0.433, 3.5, 'lm']] },
+        { t: 'ÜSTTEN', w: 0.578, h: 0.5, dw: null, dh: '5 mm', s: [
+          ['poly', hexPts(0.289, 0.25, 0.289), 'os'],
+          ['circle', 0.289, 0.25, 0.13, 'o']] }
+      ],
+      list: [['Boy', '≈ 3,5 cm'], ['Altıgen', '≈ 5 mm'], ['Vida', 'M3'], ['Sensör çubuğu için', '2 × ≈ 2,7 cm']],
+      note: 'Kat arası aralayıcının boyu kadardır; pil yuvası ve L298N (≈ 2,7 cm) sığmalı. Sensör çubuğu için iki kısa aralayıcı gerekir, yoksa kısa olanları uç uca vidala.' }
+  ];
+
+  const f1 = (n) => (Math.round(n * 10) / 10).toString();
+  function extents(v) {
+    let x0 = 0, y0 = 0, x1 = v.w, y1 = v.h;
+    const add = (a, b, c, d) => { x0 = Math.min(x0, a); y0 = Math.min(y0, b); x1 = Math.max(x1, c); y1 = Math.max(y1, d); };
+    v.s.forEach((sh) => {
+      if (sh[0] === 'rect') add(sh[1], sh[2], sh[1] + sh[3], sh[2] + sh[4]);
+      else if (sh[0] === 'circle') add(sh[1] - sh[3], sh[2] - sh[3], sh[1] + sh[3], sh[2] + sh[3]);
+      else if (sh[0] === 'line') add(Math.min(sh[1], sh[3]), Math.min(sh[2], sh[4]), Math.max(sh[1], sh[3]), Math.max(sh[2], sh[4]));
+      else if (sh[0] === 'poly') sh[1].forEach((p) => add(p[0], p[1], p[0], p[1]));
+      else if (sh[0] === 'hdim') add(sh[1], sh[3] - 0.15, sh[2], sh[3]);
+      else if (sh[0] === 'text') add(sh[1], sh[2], sh[1], sh[2]);
+    });
+    return { x0, y0, x1, y1 };
+  }
+  function shapeSvg(sh, X, Y, s) {
+    switch (sh[0]) {
+      case 'rect': return '<rect class="' + sh[5] + '" x="' + f1(X(sh[1])) + '" y="' + f1(Y(sh[2])) + '" width="' + f1(sh[3] * s) + '" height="' + f1(Math.max(1, sh[4] * s)) + '"' + (sh[6] ? ' rx="' + f1(Math.min(sh[6] * s, sh[4] * s / 2)) + '"' : '') + '/>';
+      case 'circle': return '<circle class="' + sh[4] + '" cx="' + f1(X(sh[1])) + '" cy="' + f1(Y(sh[2])) + '" r="' + f1(sh[3] * s) + '"/>';
+      case 'line': return '<path class="' + sh[5] + '" d="M' + f1(X(sh[1])) + ' ' + f1(Y(sh[2])) + ' L' + f1(X(sh[3])) + ' ' + f1(Y(sh[4])) + '"/>';
+      case 'poly': return '<polygon class="' + sh[2] + '" points="' + sh[1].map((p) => f1(X(p[0])) + ',' + f1(Y(p[1]))).join(' ') + '"/>';
+      case 'text': return '<text class="' + sh[4] + '" x="' + f1(X(sh[1])) + '" y="' + f1(Y(sh[2])) + '" text-anchor="' + (sh[5] || 'middle') + '">' + sh[3] + '</text>';
+      case 'hdim': {
+        const y = Y(sh[3]), a = X(sh[1]), b = X(sh[2]);
+        return '<path class="lm" d="M' + f1(a) + ' ' + f1(y) + ' H' + f1(b) + ' M' + f1(a) + ' ' + f1(y - 4) + ' V' + f1(y + 4) + ' M' + f1(b) + ' ' + f1(y - 4) + ' V' + f1(y + 4) + '"/><text class="tn" x="' + f1(b + 6) + '" y="' + f1(y + 4) + '">' + sh[4] + '</text>';
+      }
+    }
+    return '';
+  }
+  function partSvg(c) {
+    const W = 340, PAD = 10, TT = 24, DB = 32, GAP = 26, CAP = 60, CHAR = 6.6;
+    const vs = c.views.map((v) => Object.assign({ e: extents(v) }, v));
+    const ew = (v) => v.e.x1 - v.e.x0, eh = (v) => v.e.y1 - v.e.y0;
+    const rotFits = (v, s) => v.h * s >= v.dh.length * CHAR + 10;
+    const dimR = (v, s) => (!v.dh ? 8 : rotFits(v, s) ? 30 : 24 + v.dh.length * CHAR);
+    let s = CAP;
+    for (let pass = 0; pass < 3; pass++) {
+      if (c.layout === 'col') {
+        const byW = Math.min.apply(null, vs.map((v) => (W - 2 * PAD - dimR(v, s)) / ew(v)));
+        s = Math.min(CAP, byW, 230 / vs.reduce((a, v) => a + eh(v), 0));
+      } else {
+        const fixed = 2 * PAD + vs.reduce((a, v) => a + dimR(v, s), 0) + GAP * (vs.length - 1);
+        s = Math.min(CAP, (W - fixed) / vs.reduce((a, v) => a + ew(v), 0), 150 / Math.max.apply(null, vs.map(eh)));
+      }
+    }
+    let out = '', x = PAD, y = 0, maxY = 0;
+    const rowH = Math.max.apply(null, vs.map(eh)) * s;
+    vs.forEach((v) => {
+      const ox = c.layout === 'col' ? PAD - v.e.x0 * s : x - v.e.x0 * s;
+      const oy = c.layout === 'col' ? y + TT - v.e.y0 * s : TT + (rowH - eh(v) * s) - v.e.y0 * s;
+      const X = (u) => ox + u * s, Y = (u) => oy + u * s;
+      out += '<text class="tv" x="' + f1(X(v.e.x0)) + '" y="' + f1(Y(v.e.y0) - 10) + '">' + v.t + '</text>';
+      v.s.forEach((sh) => { out += shapeSvg(sh, X, Y, s); });
+      if (v.dw) {
+        const dy = Y(v.e.y1) + 12;
+        out += '<path class="lm" d="M' + f1(X(0)) + ' ' + f1(Y(v.h) + 3) + ' V' + f1(dy + 4) + ' M' + f1(X(v.w)) + ' ' + f1(Y(v.h) + 3) + ' V' + f1(dy + 4) + ' M' + f1(X(0)) + ' ' + f1(dy) + ' H' + f1(X(v.w)) + '"/>';
+        out += '<text class="tn" x="' + f1((X(0) + X(v.w)) / 2) + '" y="' + f1(dy + 15) + '" text-anchor="middle">' + v.dw + '</text>';
+      }
+      if (v.dh) {
+        const dx = X(v.e.x1) + 12, mid = (Y(0) + Y(v.h)) / 2;
+        out += '<path class="lm" d="M' + f1(X(v.w) + 3) + ' ' + f1(Y(0)) + ' H' + f1(dx + 4) + ' M' + f1(X(v.w) + 3) + ' ' + f1(Y(v.h)) + ' H' + f1(dx + 4) + ' M' + f1(dx) + ' ' + f1(Y(0)) + ' V' + f1(Y(v.h)) + '"/>';
+        out += rotFits(v, s)
+          ? '<text class="tn" transform="translate(' + f1(dx + 14) + ' ' + f1(mid) + ') rotate(-90)" text-anchor="middle">' + v.dh + '</text>'
+          : '<text class="tn" x="' + f1(dx + 7) + '" y="' + f1(mid + 4) + '">' + v.dh + '</text>';
+      }
+      const bottom = Y(v.e.y1) + (v.dw ? DB : 10);
+      if (c.layout === 'col') { y = bottom + 6; maxY = y; }
+      else { x += ew(v) * s + dimR(v, s) + GAP; maxY = Math.max(maxY, bottom + 6); }
+    });
+    const sx = W - PAD;
+    out += '<path class="ln" d="M' + f1(sx - s) + ' 10 H' + sx + ' M' + f1(sx - s) + ' 6 V14 M' + sx + ' 6 V14"/><text class="tm" x="' + f1(sx - s - 6) + '" y="14" text-anchor="end">1 cm</text>';
+    return '<svg viewBox="0 0 ' + W + ' ' + Math.ceil(maxY) + '" role="img" aria-label="' + c.name + ' ölçü çizimi">' + out + '</svg>';
+  }
+
+  const pgrid = $('#pgrid');
+  PCARDS.forEach((c) => {
+    const el = document.createElement('article');
+    el.className = 'pcard';
+    el.innerHTML = '<header><span class="num">' + c.n + '</span><h3>' + c.name + '</h3><span class="tag ' + c.tag + '">' + (c.tag === 'std' ? 'Standart ölçü' : 'Tahmini · cetvelle ölç') + '</span></header>'
+      + partSvg(c)
+      + '<dl class="pdims">' + c.list.map((r) => '<div><dt>' + r[0] + '</dt><dd>' + r[1] + '</dd></div>').join('') + '</dl>'
+      + '<p class="pnote">' + c.note + '</p>'
+      + '<button class="link" type="button" data-n="' + c.n + '">3D modelde göster</button>';
+    pgrid.appendChild(el);
+  });
+  pgrid.addEventListener('click', (ev) => {
+    const b = ev.target.closest('.link');
+    if (!b) return;
+    document.querySelector('.stage').scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
+    if (api.show) api.show(+b.dataset.n);
+  });
+
+  // ---------------- 3D ----------------
+  const PARTS = [
+    { n: 1, name: 'Arduino UNO', d: 'Üst kat, USB arkaya bakar. Kodu çalıştıran kart.', g: ['uno'], at: [0.4, 9.6, -2.0] },
+    { n: 2, name: 'L298N motor sürücü', d: 'Ara katta önde. Arduino\'nun sinyalini motor akımına çevirir.', g: ['l298'], at: [0, 7.9, 3.9] },
+    { n: 3, name: 'Sensör kontrol kartı', d: 'Üst katta önde. 4 trimpotla her sensörün eşiği ayarlanır.', g: ['kart'], at: [0, 9.9, 5.6] },
+    { n: 4, name: 'Kızılötesi sensörler (4)', d: 'Ön çubukta 15 mm arayla, yerden 5–10 mm.', g: ['sensor'], at: [0, 1.6, 10.6] },
+    { n: 5, name: 'Redüktörlü motorlar (2)', d: 'Alt katın altında. 6 V, 250 devir/dakika.', g: ['motor1', 'motor-1'], at: [4.85, 3.3, -1.2] },
+    { n: 6, name: 'Tekerlekler (2)', d: 'Motor millerine geçer.', g: ['teker1', 'teker-1'], at: [9.3, 3.3, 3.0] },
+    { n: 7, name: 'Sarhoş teker', d: 'Arkada, robotu dengede tutar.', g: ['sarhos'], at: [0, 1.6, -8.1] },
+    { n: 8, name: '6\'lı AA pil yuvası', d: 'Ara katta arkada. Ağır parça alçakta durur.', g: ['pil'], at: [0, 6.3, -5.0] },
+    { n: 9, name: 'Pleksi gövde ve aralayıcılar', d: 'İki kat, aralarında yaklaşık 3,5 cm.', g: ['ust', 'alt', 'ara'], at: [-5.4, 8.6, -7.0] }
+  ];
+
+  const listEl = $('#parts');
+  PARTS.forEach((p) => {
+    const li = document.createElement('li');
+    li.innerHTML = '<button class="part" type="button" data-n="' + p.n + '"><span class="num">' + p.n + '</span><span><b>' + p.name + '</b><span class="d">' + p.d + '</span></span></button>';
+    listEl.appendChild(li);
+  });
+
+  function showFallback() {
+    $('#fallback').hidden = false;
+    $('#hint').hidden = true;
+    document.querySelector('.cams').hidden = true;
+  }
+
+  if (!window.THREE || !THREE.OrbitControls) { showFallback(); return; }
+  try { init3D(); } catch (err) { console.error(err); showFallback(); }
+
+  function init3D() {
+    const view = $('#view');
+    if (THREE.ColorManagement && 'legacyMode' in THREE.ColorManagement) THREE.ColorManagement.legacyMode = false;
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setClearColor(0x000000, 0);
+    renderer.outputEncoding = THREE.sRGBEncoding;
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    renderer.domElement.className = 'gl';
+    view.insertBefore(renderer.domElement, view.firstChild);
+
+    const scene = new THREE.Scene();
+    let hasEnv = false;
+    if (THREE.RoomEnvironment) {
+      const pm = new THREE.PMREMGenerator(renderer);
+      scene.environment = pm.fromScene(new THREE.RoomEnvironment(), 0.04).texture;
+      hasEnv = true;
+    }
+    scene.add(new THREE.HemisphereLight(0xffffff, 0x8a8f8c, hasEnv ? 0.25 : 0.9));
+    const sun = new THREE.DirectionalLight(0xffffff, hasEnv ? 0.85 : 1.1);
+    sun.castShadow = true;
+    sun.shadow.mapSize.set(2048, 2048);
+    Object.assign(sun.shadow.camera, { left: -28, right: 28, top: 28, bottom: -28, near: 1, far: 200 });
+    sun.shadow.bias = -0.0004;
+    sun.shadow.normalBias = 0.02;
+    scene.add(sun, sun.target);
+
+    const camera = new THREE.PerspectiveCamera(32, 1, 0.5, 3000);
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.08;
+    controls.enablePan = false;
+    controls.minDistance = 16;
+    controls.maxDistance = 560;
+    controls.maxPolarAngle = Math.PI * 0.47;
+    controls.autoRotate = !reduceMotion;
+    controls.autoRotateSpeed = 0.7;
+    controls.addEventListener('start', () => { controls.autoRotate = false; });
+
+    // ---- pist ----
+    const matBoard = new THREE.Mesh(new THREE.BoxGeometry(BOUNDS.hw * 2, 0.6, BOUNDS.hh * 2), new THREE.MeshStandardMaterial({ color: 0xf2f2ee, roughness: 0.95 }));
+    matBoard.position.set(BOUNDS.cx, -0.3, BOUNDS.cz);
+    matBoard.receiveShadow = true;
+    scene.add(matBoard);
+
+    const N = TRACK.N, pos = new Float32Array(N * 6), nor = new Float32Array(N * 6), idx = [];
+    for (let k = 0; k < N; k++) {
+      const p = TRACK.pts[k], t = TRACK.tan[k], nx = -t[1], nz = t[0], h = GEO.lineHalf;
+      pos.set([p[0] + nx * h, 0.02, p[1] + nz * h, p[0] - nx * h, 0.02, p[1] - nz * h], k * 6);
+      nor.set([0, 1, 0, 0, 1, 0], k * 6);
+      const a = k * 2, b = a + 1, c = ((k + 1) % N) * 2, d = c + 1;
+      idx.push(a, c, b, b, c, d);
+    }
+    const lineGeo = new THREE.BufferGeometry();
+    lineGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    lineGeo.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
+    lineGeo.setIndex(idx);
+    const tapeMat = new THREE.MeshStandardMaterial({ color: 0x141414, roughness: 0.55, side: THREE.DoubleSide });
+    const tape = new THREE.Mesh(lineGeo, tapeMat);
+    tape.receiveShadow = true;
+    scene.add(tape);
+
+    const p0 = TRACK.pts[0], t0 = TRACK.tan[0];
+    const bandGeo = new THREE.PlaneGeometry(TRACK.band.across * 2, TRACK.band.half * 2);
+    bandGeo.rotateX(-Math.PI / 2);
+    const band = new THREE.Mesh(bandGeo, tapeMat);
+    band.position.set(p0[0], 0.025, p0[1]);
+    band.rotation.y = Math.atan2(t0[0], t0[1]);
+    band.receiveShadow = true;
+    scene.add(band);
+
+    (function startLabel() {
+      const c = document.createElement('canvas');
+      c.width = 1024; c.height = 220;
+      const g = c.getContext('2d');
+      g.fillStyle = '#3b3f3e';
+      g.font = '800 150px Archivo, Arial, sans-serif';
+      g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.fillText('BAŞLANGIÇ', 512, 116);
+      const tex = new THREE.CanvasTexture(c);
+      tex.encoding = THREE.sRGBEncoding;
+      const geo = new THREE.PlaneGeometry(22, 4.7);
+      geo.rotateX(-Math.PI / 2);
+      const m = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ map: tex, transparent: true, roughness: 0.9 }));
+      const nx = -t0[1], nz = t0[0];
+      const side = (nx * (p0[0] - BOUNDS.cx) + nz * (p0[1] - BOUNDS.cz)) > 0 ? 1 : -1;
+      m.position.set(p0[0] + nx * side * 12, 0.03, p0[1] + nz * side * 12);
+      m.rotation.y = Math.atan2(-t0[1], t0[0]) + (side > 0 ? 0 : Math.PI);
+      scene.add(m);
+    })();
+
+    // ---- robot ----
+    const R = buildRobot();
+    scene.add(R.root);
+
+    const hl = new THREE.Box3Helper(new THREE.Box3(), new THREE.Color(0xc62029));
+    hl.material.depthTest = false;
+    hl.material.transparent = true;
+    hl.renderOrder = 10;
+    hl.visible = false;
+    scene.add(hl);
+
+    // ---- durum ----
+    let sim = newSim(TRACK);
+    let mode = 'parts', running = false, explodeT = 0, explodeTarget = 0, showLabels = true;
+    let camMode = 'near', fly = null, active = null, hover = null, acc = 0, last = performance.now(), visible = true;
+    const SIM_DT = 1 / 240;
+
+    function senseNow() { for (let i = 0; i < 4; i++) { const p = sensorWorld(sim, i); sim.sens[i] = onLine(TRACK, p[0], p[1]); } }
+    senseNow();
+
+    function applyPose() {
+      R.root.position.set(sim.x, 0, sim.z);
+      R.root.rotation.y = sim.th;
+      R.spin[1].rotation.x = sim.spinL;
+      R.spin[-1].rotation.x = sim.spinR;
+      for (let i = 0; i < 4; i++) {
+        const on = sim.sens[i];
+        R.leds[i].material.emissiveIntensity = on ? 2.2 : 0;
+        R.boardLeds[i].material.emissiveIntensity = on ? 2.2 : 0;
+        R.spots[i].visible = on;
+      }
+      R.root.updateMatrixWorld(true);
+    }
+    applyPose();
+
+    const e = () => { const t = explodeT; return t * t * (3 - 2 * t); };
+    function robotCenter() { return R.root.localToWorld(new THREE.Vector3(0, 5 + e() * 6, 0.5)); }
+    function nearPose() {
+      const target = robotCenter();
+      const back = R.root.localToWorld(new THREE.Vector3(30, 22 + e() * 10, 40));
+      return { pos: back, target: target };
+    }
+    function topPose() {
+      const target = new THREE.Vector3(BOUNDS.cx, 0, BOUNDS.cz);
+      const aspect = camera.aspect || 1.5;
+      const half = Math.max(BOUNDS.hh, BOUNDS.hw / aspect);
+      const d = half / Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * 1.08;
+      const dir = new THREE.Vector3(0, 0.9, 0.44).normalize();
+      return { pos: target.clone().addScaledVector(dir, d), target: target };
+    }
+    function flyTo(poseFn) {
+      if (reduceMotion) { const p = poseFn(); camera.position.copy(p.pos); controls.target.copy(p.target); return; }
+      fly = { t: 0, dur: 0.8, fromPos: camera.position.clone(), fromTarget: controls.target.clone(), poseFn: poseFn };
+    }
+    { const p = nearPose(); camera.position.copy(p.pos); controls.target.copy(p.target); }
+
+    // ---- etiket noktaları ----
+    const dotsEl = $('#dots');
+    const dots = PARTS.map((p) => {
+      const b = document.createElement('button');
+      b.className = 'dot'; b.type = 'button'; b.textContent = p.n;
+      b.dataset.name = p.name; b.setAttribute('aria-label', p.name);
+      b.addEventListener('mouseenter', () => setHover(p.n));
+      b.addEventListener('mouseleave', () => setHover(null));
+      b.addEventListener('focus', () => setHover(p.n));
+      b.addEventListener('blur', () => setHover(null));
+      b.addEventListener('click', () => setActive(active === p.n ? null : p.n));
+      dotsEl.appendChild(b);
+      return b;
+    });
+    const partBtns = Array.from(document.querySelectorAll('.part'));
+    partBtns.forEach((btn) => {
+      const n = +btn.dataset.n;
+      btn.addEventListener('mouseenter', () => setHover(n));
+      btn.addEventListener('mouseleave', () => setHover(null));
+      btn.addEventListener('focus', () => setHover(n));
+      btn.addEventListener('blur', () => setHover(null));
+      btn.addEventListener('click', () => setActive(active === n ? null : n));
+    });
+    function setHover(n) { hover = n; syncSel(); }
+    function setActive(n) { active = n; syncSel(); }
+    function syncSel() {
+      const sel = hover != null ? hover : active;
+      partBtns.forEach((b) => b.classList.toggle('on', +b.dataset.n === sel));
+      dots.forEach((d, i) => d.classList.toggle('on', PARTS[i].n === sel));
+      const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
+      if (accent) hl.material.color.set(accent);
+    }
+    const tmpV = new THREE.Vector3(), box = new THREE.Box3();
+    function updateOverlay(w, h) {
+      const sel = hover != null ? hover : active;
+      if (sel != null && mode === 'parts') {
+        box.makeEmpty();
+        PARTS[sel - 1].g.forEach((name) => box.expandByObject(R.groups[name]));
+        box.expandByScalar(0.3);
+        hl.box.copy(box);
+        hl.visible = true;
+      } else hl.visible = false;
+      const show = showLabels && mode === 'parts';
+      dotsEl.hidden = !show;
+      if (!show) return;
+      PARTS.forEach((p, i) => {
+        const off = R.groups[p.g[0]].userData.off;
+        tmpV.set(p.at[0] + off.x * e(), p.at[1] + off.y * e(), p.at[2] + off.z * e());
+        R.root.localToWorld(tmpV);
+        tmpV.project(camera);
+        const out = tmpV.z > 1 || Math.abs(tmpV.x) > 1.05 || Math.abs(tmpV.y) > 1.05;
+        dots[i].style.display = out ? 'none' : '';
+        if (!out) dots[i].style.transform = 'translate(' + ((tmpV.x + 1) / 2 * w).toFixed(1) + 'px,' + ((1 - tmpV.y) / 2 * h).toFixed(1) + 'px)';
+      });
+    }
+
+    // ---- kontroller ----
+    const tabParts = $('#tab-parts'), tabDrive = $('#tab-drive');
+    const panelParts = $('#panel-parts'), panelDrive = $('#panel-drive');
+    function setMode(m) {
+      mode = m;
+      tabParts.setAttribute('aria-selected', String(m === 'parts'));
+      tabDrive.setAttribute('aria-selected', String(m === 'drive'));
+      panelParts.hidden = m !== 'parts';
+      panelDrive.hidden = m !== 'drive';
+      panelParts.style.display = m === 'parts' ? 'grid' : 'none';
+      panelDrive.style.display = m === 'drive' ? 'grid' : 'none';
+      $('#hud').hidden = m !== 'drive';
+      if (m === 'drive') {
+        explodeTarget = 0;
+        $('#explode').setAttribute('aria-pressed', 'false');
+        controls.autoRotate = false;
+        setActive(null);
+      } else {
+        setRunning(false);
+      }
+    }
+    tabParts.addEventListener('click', () => setMode('parts'));
+    tabDrive.addEventListener('click', () => setMode('drive'));
+    api.show = (n) => { setMode('parts'); setActive(n); controls.autoRotate = false; camMode = 'near'; syncCam(); flyTo(nearPose); };
+    [tabParts, tabDrive].forEach((t) => t.addEventListener('keydown', (ev) => {
+      if (ev.key === 'ArrowRight' || ev.key === 'ArrowLeft') { const other = t === tabParts ? tabDrive : tabParts; other.focus(); other.click(); }
+    }));
+
+    $('#explode').addEventListener('click', (ev) => {
+      const on = ev.currentTarget.getAttribute('aria-pressed') !== 'true';
+      ev.currentTarget.setAttribute('aria-pressed', String(on));
+      explodeTarget = on ? 1 : 0;
+      if (reduceMotion) explodeT = explodeTarget;
+    });
+    $('#labels').addEventListener('click', (ev) => {
+      showLabels = ev.currentTarget.getAttribute('aria-pressed') !== 'true';
+      ev.currentTarget.setAttribute('aria-pressed', String(showLabels));
+    });
+    $('#cam-near').addEventListener('click', () => { camMode = 'near'; syncCam(); flyTo(nearPose); });
+    $('#cam-top').addEventListener('click', () => { camMode = 'top'; syncCam(); controls.autoRotate = false; flyTo(topPose); });
+    function syncCam() {
+      $('#cam-near').setAttribute('aria-pressed', String(camMode === 'near'));
+      $('#cam-top').setAttribute('aria-pressed', String(camMode === 'top'));
+    }
+
+    const runBtn = $('#run');
+    function setRunning(r) {
+      running = r;
+      runBtn.textContent = r ? 'Durdur' : 'Başlat';
+    }
+    runBtn.addEventListener('click', () => {
+      if (sim.fell) resetSim();
+      setRunning(!running);
+    });
+    function resetSim() {
+      sim = newSim(TRACK);
+      senseNow();
+      acc = 0;
+      lapsShown = -1;
+      applyPose();
+      if (camMode === 'near') flyTo(nearPose);
+    }
+    $('#reset').addEventListener('click', () => { setRunning(false); resetSim(); });
+
+    const sliders = [['k-taban', 'o-taban', 'TABAN_HIZ'], ['k-kp', 'o-kp', 'KP'], ['k-fren', 'o-fren', 'VIRAJ_FRENI']];
+    sliders.forEach(([id, out, key]) => {
+      const el = $('#' + id);
+      const apply = () => { AYAR[key] = +el.value; $('#' + out).textContent = el.value; renderExplainer(); };
+      el.addEventListener('input', apply);
+      apply();
+    });
+
+    // ---- HUD ----
+    const hudS = Array.from(document.querySelectorAll('#hud .s'));
+    let hudCache = '', lapsShown = -1;
+    function updateHUD() {
+      let state;
+      if (sim.fell) state = 'Robot pistten çıktı. Sıfırla.';
+      else if (!running && sim.t === 0) state = 'Hazır: Başlat\'a bas';
+      else if (!running) state = 'Duraklatıldı';
+      else state = verdict(sim.out);
+      const hata = sim.out.hata == null ? '—' : fmt(sim.out.hata);
+      const key = sim.sens.join() + hata + sim.out.sol + sim.out.sag + state;
+      if (key !== hudCache) {
+        hudCache = key;
+        sim.sens.forEach((v, i) => hudS[i].classList.toggle('on', v));
+        $('#h-hata').textContent = hata;
+        $('#h-sol').textContent = fmt(clampPwm(sim.out.sol));
+        $('#h-sag').textContent = fmt(clampPwm(sim.out.sag));
+        $('#h-state').textContent = state;
+      }
+      if (sim.laps.length !== lapsShown) {
+        lapsShown = sim.laps.length;
+        $('#lap-count').textContent = String(lapsShown);
+        const sec = (v) => fmt(v) + ' sn';
+        $('#lap-last').textContent = lapsShown ? sec(sim.laps[lapsShown - 1]) : '—';
+        $('#lap-best').textContent = lapsShown ? sec(Math.min.apply(null, sim.laps)) : '—';
+      }
+    }
+
+    // ---- boyut ----
+    let W = 1, H = 1;
+    function resize() {
+      W = view.clientWidth; H = view.clientHeight;
+      renderer.setSize(W, H, false);
+      camera.aspect = W / H;
+      camera.updateProjectionMatrix();
+    }
+    resize();
+    if (window.ResizeObserver) new ResizeObserver(resize).observe(view);
+    else window.addEventListener('resize', resize);
+    if (window.IntersectionObserver) new IntersectionObserver((en) => { visible = en[0].isIntersecting; }).observe(view);
+
+    // ---- döngü ----
+    function frame(now) {
+      requestAnimationFrame(frame);
+      const dt = Math.min(0.05, (now - last) / 1000);
+      last = now;
+      if (!visible) return;
+
+      if (explodeT !== explodeTarget) {
+        const step = dt * 1.6;
+        explodeT = explodeTarget > explodeT ? Math.min(explodeTarget, explodeT + step) : Math.max(explodeTarget, explodeT - step);
+      }
+      const ev = e();
+      for (const name in R.groups) R.groups[name].position.copy(R.groups[name].userData.off).multiplyScalar(ev);
+      R.cables.visible = ev < 0.02;
+
+      if (running && !sim.fell) {
+        acc += dt * ($('#slow').checked ? 0.25 : 1);
+        let n = 0;
+        while (acc >= SIM_DT && n < 60) { simStep(sim, TRACK, SIM_DT, BOUNDS); acc -= SIM_DT; n++; }
+        if (sim.fell) setRunning(false);
+      }
+      applyPose();
+
+      const rc = R.root.position;
+      sun.position.set(rc.x + 26, 60, rc.z + 18);
+      sun.target.position.set(rc.x, 0, rc.z);
+
+      if (fly) {
+        fly.t += dt;
+        const k = Math.min(1, fly.t / fly.dur), s = k * k * (3 - 2 * k), p = fly.poseFn();
+        camera.position.lerpVectors(fly.fromPos, p.pos, s);
+        controls.target.lerpVectors(fly.fromTarget, p.target, s);
+        if (k >= 1) fly = null;
+      } else if (camMode === 'near') {
+        const c = robotCenter();
+        camera.position.add(c.clone().sub(controls.target));
+        controls.target.copy(c);
+      }
+      controls.update();
+      renderer.render(scene, camera);
+      updateOverlay(W, H);
+      if (mode === 'drive') updateHUD();
+    }
+    requestAnimationFrame(frame);
+  }
+
+  // ---------------- Robot modeli (cm, ileri = +z, sol = +x) ----------------
+  function buildRobot() {
+    const root = new THREE.Group();
+    const groups = {};
+    const G = (name, off) => {
+      const g = new THREE.Group();
+      g.userData.off = new THREE.Vector3(off[0], off[1], off[2]);
+      root.add(g);
+      groups[name] = g;
+      return g;
+    };
+    const std = (c, r, m) => new THREE.MeshStandardMaterial({ color: c, roughness: r == null ? 0.6 : r, metalness: m || 0 });
+    const M = {
+      plexi: new THREE.MeshPhysicalMaterial({ color: 0xd11f2b, roughness: 0.14, metalness: 0, transparent: true, opacity: 0.8, clearcoat: 1, clearcoatRoughness: 0.08 }),
+      yellow: std(0xf2c01a, 0.55), tire: std(0x1b1b1b, 0.92), steel: std(0xcfd3d6, 0.28, 0.9), brass: std(0xc8a445, 0.32, 0.9),
+      black: std(0x17171a, 0.55), white: std(0xeeeeea, 0.6), grey: std(0x5f656a, 0.6), pcbBlue: std(0x1b4fb5, 0.5),
+      screw: std(0x2a64d8, 0.45), wood: std(0xdab27a, 0.85), cell: std(0xc47a2c, 0.35, 0.5), cellEnd: std(0x1b1b1b, 0.5),
+      trim: std(0x2f6ff0, 0.45), trimTop: std(0xe9d9a8, 0.5, 0.3)
+    };
+    const mesh = (geo, mat, x, y, z, parent) => {
+      const m = new THREE.Mesh(geo, mat);
+      m.position.set(x, y, z);
+      m.castShadow = true; m.receiveShadow = true;
+      parent.add(m);
+      return m;
+    };
+    const box = (w, h, d, mat, x, y, z, p) => mesh(new THREE.BoxGeometry(w, h, d), mat, x, y, z, p);
+    const cylX = (r, len, mat, x, y, z, p, seg) => { const g = new THREE.CylinderGeometry(r, r, len, seg || 20); g.rotateZ(Math.PI / 2); return mesh(g, mat, x, y, z, p); };
+    const cylY = (r, len, mat, x, y, z, p, seg) => mesh(new THREE.CylinderGeometry(r, r, len, seg || 20), mat, x, y, z, p);
+    const cylZ = (r, len, mat, x, y, z, p, seg) => { const g = new THREE.CylinderGeometry(r, r, len, seg || 20); g.rotateX(Math.PI / 2); return mesh(g, mat, x, y, z, p); };
+    const hex = (len, x, y, z, p, r) => cylY(r || 0.32, len, M.brass, x, y, z, p, 6);
+    const decal = (w, d, ppc, draw, x, y, z, p) => {
+      const c = document.createElement('canvas');
+      c.width = Math.round(w * ppc); c.height = Math.round(d * ppc);
+      draw(c.getContext('2d'), c.width, c.height);
+      const tex = new THREE.CanvasTexture(c);
+      tex.encoding = THREE.sRGBEncoding;
+      tex.anisotropy = 4;
+      const geo = new THREE.PlaneGeometry(w, d);
+      geo.rotateX(-Math.PI / 2);
+      const m = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ map: tex, roughness: 0.5 }));
+      m.position.set(x, y, z);
+      m.receiveShadow = true;
+      p.add(m);
+      return m;
+    };
+    const ledMat = () => new THREE.MeshStandardMaterial({ color: 0x7a1414, emissive: 0xff2a2a, emissiveIntensity: 0, roughness: 0.4 });
+
+    function plateGeo(w, l, r) {
+      const s = new THREE.Shape(), x0 = -w / 2, y0 = -l / 2;
+      s.moveTo(x0 + r, y0); s.lineTo(x0 + w - r, y0); s.quadraticCurveTo(x0 + w, y0, x0 + w, y0 + r);
+      s.lineTo(x0 + w, y0 + l - r); s.quadraticCurveTo(x0 + w, y0 + l, x0 + w - r, y0 + l);
+      s.lineTo(x0 + r, y0 + l); s.quadraticCurveTo(x0, y0 + l, x0, y0 + l - r);
+      s.lineTo(x0, y0 + r); s.quadraticCurveTo(x0, y0, x0 + r, y0);
+      for (let i = -3; i <= 3; i++) for (let j = -5; j <= 5; j++) {
+        const hx = i * 1.5, hy = j * 1.5;
+        if (Math.abs(hx) > w / 2 - 1.2 || Math.abs(hy) > l / 2 - 1.2) continue;
+        const h = new THREE.Path();
+        h.absarc(hx, hy, 0.2, 0, Math.PI * 2, true);
+        s.holes.push(h);
+      }
+      const g = new THREE.ExtrudeGeometry(s, { depth: 0.3, bevelEnabled: false, curveSegments: 6 });
+      g.rotateX(-Math.PI / 2);
+      return g;
+    }
+
+    // Gövde katları ve aralayıcılar
+    const plate = plateGeo(12, 17.6, 1.6);
+    mesh(plate, M.plexi, 0, 4.45, 0, G('alt', [0, 1.5, 0]));
+    mesh(plate, M.plexi, 0, 8.25, 0, G('ust', [0, 10, 0]));
+    const ara = G('ara', [0, 7.5, 0]);
+    [[5.2, 6.8], [-5.2, 6.8], [5.2, -6.8], [-5.2, -6.8]].forEach(([x, z]) => hex(3.5, x, 6.5, z, ara));
+
+    // Motorlar ve tekerlekler (s = +1 sol, -1 sağ)
+    const spin = {};
+    [1, -1].forEach((s) => {
+      const m = G('motor' + s, [s * 2.2, 0, 0]);
+      box(1.9, 2.25, 7.0, M.yellow, s * 4.85, 3.3, 0.6, m);
+      cylX(0.95, 1.4, M.steel, s * 3.2, 3.3, -2.0, m);
+      cylX(0.28, 1.0, M.white, s * 6.25, 3.3, 3.0, m, 12);
+      box(0.3, 2.3, 2.4, M.plexi, s * 5.95, 3.3, 0.6, m);
+      box(0.3, 2.3, 2.4, M.plexi, s * 3.75, 3.3, 0.6, m);
+      const w = G('teker' + s, [s * 5.5, 0, 0]);
+      const sp = new THREE.Group();
+      sp.position.set(s * 7.9, 3.3, 3.0);
+      w.add(sp);
+      spin[s] = sp;
+      cylX(3.3, 2.6, M.tire, 0, 0, 0, sp, 40);
+      cylX(2.25, 2.72, M.yellow, 0, 0, 0, sp, 32);
+      for (let k = 0; k < 5; k++) { const a = k * Math.PI * 2 / 5; cylX(0.42, 2.76, M.tire, 0, Math.cos(a) * 1.35, Math.sin(a) * 1.35, sp, 12); }
+      cylX(0.5, 2.8, M.white, 0, 0, 0, sp, 16);
+    });
+
+    // Sarhoş teker
+    const sar = G('sarhos', [0, 0, -3.5]);
+    hex(1.7, 0, 3.6, -7.0, sar);
+    box(2.4, 0.2, 2.4, M.steel, 0, 2.65, -7.0, sar);
+    cylY(0.55, 0.3, M.steel, 0, 2.4, -7.0, sar);
+    box(0.12, 1.5, 0.8, M.steel, 0.5, 1.6, -7.35, sar);
+    box(0.12, 1.5, 0.8, M.steel, -0.5, 1.6, -7.35, sar);
+    cylX(0.95, 0.75, M.grey, 0, 0.95, -7.6, sar, 24);
+    cylX(0.15, 1.2, M.steel, 0, 0.95, -7.6, sar, 8);
+
+    // Pil yuvası
+    const pil = G('pil', [0, 4, 0]);
+    box(9.4, 1.0, 5.8, M.black, 0, 5.25, -5.0, pil);
+    box(9.4, 1.6, 0.3, M.black, 0, 5.55, -7.75, pil);
+    box(9.4, 1.6, 0.3, M.black, 0, 5.55, -2.25, pil);
+    for (let i = 0; i < 6; i++) {
+      const x = -3.75 + i * 1.5;
+      cylZ(0.72, 4.9, M.cell, x, 5.7, -5.0, pil);
+      cylZ(0.73, 1.4, M.cellEnd, x, 5.7, i % 2 ? -3.25 : -6.75, pil);
+    }
+
+    // L298N
+    const l = G('l298', [0, 4, 0]);
+    [[1.85, 1.85], [-1.85, 1.85], [1.85, -1.85], [-1.85, -1.85]].forEach(([x, z]) => cylY(0.18, 0.5, M.brass, x, 5.0, 4.5 + z, l, 6));
+    box(4.35, 0.16, 4.35, std(0xb3161f, 0.5), 0, 5.33, 4.5, l);
+    decal(4.35, 4.35, 120, (g, w, h) => {
+      g.fillStyle = '#b3161f'; g.fillRect(0, 0, w, h);
+      g.strokeStyle = '#f3e9e9'; g.lineWidth = 4; g.strokeRect(10, 10, w - 20, h - 20);
+      g.fillStyle = '#f3e9e9'; g.font = '700 60px Arial, sans-serif'; g.textAlign = 'center';
+      g.fillText('L298N', w / 2, h * 0.75);
+    }, 0, 5.415, 4.5, l);
+    box(2.4, 0.3, 1.7, M.black, 0, 5.56, 3.9, l);
+    for (let k = 0; k < 7; k++) box(0.14, 2.2, 1.7, M.black, -1.1 + k * 0.367, 6.81, 3.9, l);
+    box(0.85, 1.0, 1.1, M.screw, 1.75, 5.91, 4.7, l);
+    box(0.85, 1.0, 1.1, M.screw, -1.75, 5.91, 4.7, l);
+    box(1.6, 1.0, 0.85, M.screw, -0.8, 5.91, 6.2, l);
+    box(1.6, 0.28, 0.3, M.black, 1.1, 5.55, 6.4, l);
+
+    // Arduino UNO
+    const uno = G('uno', [0, 12.5, 0]);
+    const cz = -2.5;
+    [[2.2, 3.0], [-2.2, 3.0], [2.2, -3.0], [-2.2, -3.0]].forEach(([x, z]) => cylY(0.2, 0.5, M.brass, x, 8.8, cz + z, uno, 6));
+    box(5.34, 0.16, 6.86, std(0x0d8790, 0.45), 0, 9.13, cz, uno);
+    decal(5.34, 6.86, 100, (g, w, h) => {
+      g.fillStyle = '#0d8790'; g.fillRect(0, 0, w, h);
+      g.strokeStyle = '#e9f6f7'; g.lineWidth = 3; g.strokeRect(8, 8, w - 16, h - 16);
+      g.fillStyle = '#e9f6f7'; g.textAlign = 'center';
+      g.font = '800 120px Arial, sans-serif'; g.fillText('UNO', w / 2, h * 0.62);
+      g.font = '700 40px Arial, sans-serif'; g.fillText('ARDUINO', w / 2, h * 0.44);
+      g.save(); g.translate(w - 62, h / 2); g.rotate(Math.PI / 2); g.font = '600 24px Arial, sans-serif'; g.fillText('DIGITAL (PWM ~)', 0, 0); g.restore();
+      g.save(); g.translate(62, h / 2); g.rotate(-Math.PI / 2); g.font = '600 24px Arial, sans-serif'; g.fillText('POWER    ANALOG IN', 0, 0); g.restore();
+    }, 0, 9.215, cz, uno);
+    box(0.25, 0.85, 4.9, M.black, 2.45, 9.64, cz + 0.95, uno);
+    box(0.25, 0.85, 3.8, M.black, -2.45, 9.64, cz + 1.2, uno);
+    box(1.2, 1.1, 1.6, M.steel, 1.3, 9.76, cz - 3.2, uno);
+    box(0.9, 1.1, 1.5, M.black, -1.8, 9.76, cz - 3.25, uno);
+    box(0.75, 0.12, 0.75, M.black, 0.2, 9.27, cz + 0.6, uno);
+    box(0.5, 0.1, 0.9, M.black, 0.7, 9.26, cz - 1.6, uno);
+    box(0.5, 0.3, 0.5, M.steel, -1.6, 9.36, cz - 2.4, uno);
+
+    // Sensör kontrol kartı
+    const kart = G('kart', [0, 12.5, 2.5]);
+    const kz = 5.6, kt = 9.21;
+    [[1.8, 1.2], [-1.8, 1.2], [1.8, -1.2], [-1.8, -1.2]].forEach(([x, z]) => cylY(0.18, 0.5, M.brass, x, 8.8, kz + z, kart, 6));
+    box(4.2, 0.16, 3.0, M.pcbBlue, 0, 9.13, kz, kart);
+    const boardLeds = [];
+    [1.5, 0.5, -0.5, -1.5].forEach((x) => {
+      box(0.66, 0.62, 0.66, M.trim, x, kt + 0.31, kz + 0.45, kart);
+      cylY(0.2, 0.06, M.trimTop, x, kt + 0.65, kz + 0.45, kart, 16);
+      boardLeds.push(box(0.2, 0.12, 0.3, ledMat(), x, kt + 0.06, kz - 0.4, kart));
+      box(0.8, 0.5, 0.45, M.white, x, kt + 0.25, kz + 1.2, kart);
+    });
+    box(1.0, 0.15, 0.5, M.black, 0, kt + 0.075, kz - 0.95, kart);
+    box(2.6, 0.25, 0.25, M.black, 0, kt + 0.125, kz - 1.35, kart);
+
+    // Sensör çubuğu ve 4 sensör
+    const sg = G('sensor', [0, 0, 5]);
+    hex(2.74, 3.0, 3.08, 8.2, sg);
+    hex(2.74, -3.0, 3.08, 8.2, sg);
+    box(7.4, 0.22, 1.1, M.wood, 0, 1.6, 8.2, sg);
+    const leds = [], spots = [];
+    const spotGeo = new THREE.CircleGeometry(0.6, 24);
+    spotGeo.rotateX(-Math.PI / 2);
+    GEO.sensorX.forEach((x) => {
+      box(1.05, 0.12, 3.2, M.pcbBlue, x, 1.41, 8.8, sg);
+      box(1.0, 0.65, 0.56, M.black, x, 1.025, GEO.sensorZ, sg);
+      box(0.75, 0.25, 0.3, M.black, x, 1.6, 7.35, sg);
+      leds.push(box(0.22, 0.1, 0.3, ledMat(), x, 1.52, 10.1, sg));
+      const spot = new THREE.Mesh(spotGeo, new THREE.MeshBasicMaterial({ color: 0xff3340, transparent: true, opacity: 0.9 }));
+      spot.position.set(x, 0.04, GEO.sensorZ);
+      spot.visible = false;
+      sg.add(spot);
+      spots.push(spot);
+    });
+
+    // Kablolar
+    const cables = new THREE.Group();
+    root.add(cables);
+    const wireMats = {};
+    const cable = (pts, color, r) => {
+      if (!wireMats[color]) wireMats[color] = new THREE.MeshStandardMaterial({ color: color, roughness: 0.55 });
+      const curve = new THREE.CatmullRomCurve3(pts.map((p) => new THREE.Vector3(p[0], p[1], p[2])));
+      const m = new THREE.Mesh(new THREE.TubeGeometry(curve, 48, r || 0.075, 6, false), wireMats[color]);
+      m.castShadow = true;
+      cables.add(m);
+    };
+    const C = { red: 0xe53935, black: 0x222222, yellow: 0xfbc02d, green: 0x16a34a, blue: 0x2563eb, purple: 0x7c3aed, cyan: 0x0891b2, orange: 0xf59e0b, amber: 0xd4a017, white: 0xeeeeee };
+    // sensör -> kontrol kartı (3 telli)
+    GEO.sensorX.forEach((sx, i) => {
+      const cx = [1.5, 0.5, -0.5, -1.5][i];
+      [[-0.12, C.red], [0, C.black], [0.12, C.yellow]].forEach(([dx, col]) => {
+        cable([[sx + dx, 1.65, 7.35], [sx + dx, 2.6, 7.3], [sx * 0.95 + dx, 4.6, 7.3], [sx * 0.9 + dx, 7.0, 7.3], [sx * 0.85 + dx, 8.4, 7.3], [cx + dx, 9.75, 7.5], [cx + dx, 9.46, 7.05]], col, 0.05);
+      });
+    });
+    // kontrol kartı -> Arduino (VCC, GND, OUT1-4)
+    [[C.red, -2.2], [C.black, -1.95], [C.amber, -0.6], [C.amber, -0.35], [C.amber, -0.1], [C.amber, 0.15]].forEach(([col, pz], k) => {
+      const x = -1.25 + k * 0.5;
+      cable([[x, 9.5, 4.25], [x * 0.8, 10.4, 3.4], [-1.6 + k * 0.08, 10.9, 1.2], [-2.45, 10.6, pz + 0.5], [-2.45, 10.06, pz]], col);
+    });
+    // L298N -> Arduino (ENA, IN1, IN2, IN3, IN4, ENB)
+    [[C.orange, -1.1], [C.green, -1.6], [C.blue, -2.4], [C.purple, -2.65], [C.cyan, -2.9], [C.orange, -1.35]].forEach(([col, pz], k) => {
+      const hx = 0.45 + k * 0.26;
+      cable([[hx, 5.7, 6.45], [hx + 1.2, 6.6, 7.0], [3.9 + k * 0.06, 8.0, 7.0], [3.6, 9.8, 6.0], [3.2, 10.9, 2.0], [2.45, 10.7, pz + 0.5], [2.45, 10.06, pz]], col);
+    });
+    // güç: L298N 12V/GND -> Arduino VIN/GND
+    [[C.red, -1.3, -1.45], [C.black, -0.8, -1.7]].forEach(([col, tx, pz], k) => {
+      cable([[tx, 6.4, 6.2], [-2.6 - k * 0.1, 6.8, 7.0], [-4.0, 8.0, 6.6], [-3.8, 9.8, 5.0], [-3.2, 10.8, 1.0], [-2.45, 10.6, pz + 0.5], [-2.45, 10.06, pz]], col);
+    });
+    // motor kabloları
+    [1, -1].forEach((s) => {
+      [[-0.15, C.red], [0.15, C.black]].forEach(([dz, col]) => {
+        cable([[s * 2.55, 3.5, -2.0 + dz], [s * 2.2, 3.9, -0.5 + dz], [s * 2.6, 4.6, 1.5 + dz], [s * 2.4, 6.0, 3.6 + dz], [s * 1.75, 6.45, 4.5 + dz]], col);
+      });
+    });
+    // pil -> Arduino DC jak
+    cable([[-4.0, 5.6, -7.9], [-4.6, 5.8, -9.4], [-3.8, 8.0, -9.7], [-2.4, 9.9, -8.2], [-1.8, 9.76, -7.4]], C.black, 0.12);
+    cylZ(0.3, 1.0, M.black, -1.8, 9.76, -6.9, cables);
+
+    return { root, groups, spin, leds, boardLeds, spots, cables };
+  }
+})();
+</script>
