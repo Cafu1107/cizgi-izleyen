@@ -49,10 +49,11 @@ const byte MOD = 0;  // 0 = yarış, 1 = sensör testi, 2 = motor testi
 const bool CIZGI_SEVIYESI = HIGH;
 
 // Hızlar (0-255 arası PWM değeri)
-const int TABAN_HIZ   = 140;  // çizgi tam ortadayken iki motorun hızı
+// Versiyon 2 (afişteki robot) için. Versiyon 1: TABAN_HIZ 140, KP 45.
+const int TABAN_HIZ   = 130;  // çizgi tam ortadayken iki motorun hızı
 const int MAKS_HIZ    = 255;  // hiçbir motor bundan hızlı dönmez
 const int ARAMA_HIZI  = 150;  // çizgi kaybolunca yerinde dönme hızı
-const float KP        = 45;   // dönüş sertliği: hata başına hız farkı
+const float KP        = 30;   // dönüş sertliği: hata başına hız farkı
 const int VIRAJ_FRENI = 10;   // çizgi ortadan kaydıkça taban hızdan düşülen
 
 // Bir motor ters dönüyorsa true yap (ya da o motorun iki kablosunu değiştir)

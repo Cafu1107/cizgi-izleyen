@@ -2,6 +2,8 @@
 
 Okul projesi: kitteki parçalarla (Arduino UNO, L298N, 4'lü kızılötesi sensör, iki katlı pleksi şasi) siyah çizgiyi izleyen robot.
 
+Robotumuz **Versiyon 2** yerleşiminde (tekerlekler arkada, sensörler ön kenarda); koddaki ayarlar buna göre: `TABAN_HIZ 130`, `KP 30`.
+
 ## Dosyalar
 
 | Dosya | Ne işe yarar |

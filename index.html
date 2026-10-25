@@ -356,7 +356,8 @@
     <p class="eyebrow">Okul projesi · <span lang="en">Arduino UNO + L298N</span> + 4'lü kızılötesi sensör</p>
     <h1>Çizgi İzleyen Robot</h1>
     <p class="lede">Kitteki parçalarla kuracağınız robotun 3D modeli. Döndürüp inceleyebilir, parçalarını ayırabilir ya da pistte <code>cizgi_izleyen.ino</code> kodundaki kurallarla sürebilirsin.</p>
-    <p><a class="v2link" href="v2.html">Yarışma afişindeki gibi robot mu? Versiyon 2 sayfası →</a></p>
+    <p><a class="v2link" href="v2.html">Robotumuz afişteki gibi: Versiyon 2 sayfası →</a></p>
+    <p class="muted">Kod ve varsayılan ayarlar Versiyon 2'ye göre (TABAN_HIZ 130, KP 30). 3D model Versiyon 1 yerleşimini gösteriyor.</p>
   </header>
 
   <section class="stage" aria-label="3D robot modeli">
@@ -394,13 +395,13 @@
         </div>
         <label class="check" for="slow"><input type="checkbox" id="slow"> Ağır çekim (4 kat yavaş)</label>
         <div class="ctl">
-          <label for="k-taban">TABAN_HIZ <output id="o-taban">140</output></label>
-          <input type="range" id="k-taban" min="0" max="255" step="1" value="140">
+          <label for="k-taban">TABAN_HIZ <output id="o-taban">130</output></label>
+          <input type="range" id="k-taban" min="0" max="255" step="1" value="130">
           <small>Çizgi ortadayken iki motorun hızı (0–255).</small>
         </div>
         <div class="ctl">
-          <label for="k-kp">KP <output id="o-kp">45</output></label>
-          <input type="range" id="k-kp" min="0" max="150" step="0.5" value="45">
+          <label for="k-kp">KP <output id="o-kp">30</output></label>
+          <input type="range" id="k-kp" min="0" max="150" step="0.5" value="30">
           <small>Dönüş sertliği. Az gelirse virajda kaçar, çok gelirse düzde zikzak çizer.</small>
         </div>
         <div class="ctl">
@@ -898,10 +899,11 @@ const byte MOD = 0;  // 0 = yarış, 1 = sensör testi, 2 = motor testi
 const bool CIZGI_SEVIYESI = HIGH;
 
 // Hızlar (0-255 arası PWM değeri)
-const int TABAN_HIZ   = 140;  // çizgi tam ortadayken iki motorun hızı
+// Versiyon 2 (afişteki robot) için. Versiyon 1: TABAN_HIZ 140, KP 45.
+const int TABAN_HIZ   = 130;  // çizgi tam ortadayken iki motorun hızı
 const int MAKS_HIZ    = 255;  // hiçbir motor bundan hızlı dönmez
 const int ARAMA_HIZI  = 150;  // çizgi kaybolunca yerinde dönme hızı
-const float KP        = 45;   // dönüş sertliği: hata başına hız farkı
+const float KP        = 30;   // dönüş sertliği: hata başına hız farkı
 const int VIRAJ_FRENI = 10;   // çizgi ortadan kaydıkça taban hızdan düşülen
 
 // Bir motor ters dönüyorsa true yap (ya da o motorun iki kablosunu değiştir)
@@ -1157,7 +1159,7 @@ void motorAdim(const __FlashStringHelper *yazi, int sol, int sag) {
 (function () {
   'use strict';
 // cizgi_izleyen.ino'daki ayarlar ve kurallar (birebir)
-const AYAR = { TABAN_HIZ: 140, KP: 45, VIRAJ_FRENI: 10, ARAMA_HIZI: 150, MAKS_HIZ: 255, TUM_SIYAH_DUR: 400, KAYIP_DUR: 3000 };
+const AYAR = { TABAN_HIZ: 130, KP: 30, VIRAJ_FRENI: 10, ARAMA_HIZI: 150, MAKS_HIZ: 255, TUM_SIYAH_DUR: 400, KAYIP_DUR: 3000 };
 const AGIRLIK = [-3, -1, 1, 3];
 // Robot ölçüleri (cm) ve basit motor modeli
 const GEO = { wheelR: 3.3, wheelBase: 15.8, sensorX: [2.25, 0.75, -0.75, -2.25], sensorZ: 6.7, axleZ: 3.0, lineHalf: 0.95, maxV: 70, dead: 40, tau: 0.08 };
@@ -1655,7 +1657,7 @@ function simStep(sim, tr, dt, bounds) {
 /*INO-START*/
   const DEF = {
     MOD: 0, CIZGI_SEVIYESI: 'HIGH', SENSOR_TERS: false,
-    TABAN_HIZ: 140, KP: 45, VIRAJ_FRENI: 10, ARAMA_HIZI: 150, MAKS_HIZ: 255,
+    TABAN_HIZ: 130, KP: 30, VIRAJ_FRENI: 10, ARAMA_HIZI: 150, MAKS_HIZ: 255,
     SOL_TERS: false, SAG_TERS: false,
     BASLAMA_BEKLEME: 3000, TUM_SIYAH_DUR: 400, KAYIP_DUR: 3000, BUTON_KULLAN: false,
     ENA: '5', IN1: '7', IN2: '8', IN3: '9', IN4: '10', ENB: '6', BUTON_PIN: '2',
