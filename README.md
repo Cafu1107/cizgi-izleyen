@@ -7,9 +7,11 @@ Okul projesi: kitteki parçalarla (Arduino UNO, L298N, 4'lü kızılötesi sens�
 | Dosya | Ne işe yarar |
 |---|---|
 | [`cizgi_izleyen/cizgi_izleyen.ino`](cizgi_izleyen/cizgi_izleyen.ino) | Arduino kodu. Arduino IDE ile açıp karta yükle. |
-| [`robot.html`](robot.html) | 3D model, pist simülasyonu, ölçüler, kablolama şeması ve ayar menülü kod üretici. İndirip tarayıcıda aç (internet gerekir). |
+| [`robot.html`](robot.html) | 3D model, pist simülasyonu, ölçüler, kablolama şeması ve ayar menülü kod üretici (claude.ai sayfasının kaynağı). |
+| [`index.html`](index.html) | GitHub Pages sürümü. `robot.html` değişince `node tools/build-index.js` ile yeniden üret. |
 
-Sayfanın çevrimiçi hali: https://claude.ai/artifact/7p15a4Bj83Es5iEGig92bk (özel, sadece paylaşılan kişiler açabilir).
+Sayfa: https://cafu1107.github.io/cizgi-izleyen/ (depo özel, ama Pages adresini bilen herkes sayfayı açabilir).
+claude.ai kopyası: https://claude.ai/artifact/7p15a4Bj83Es5iEGig92bk (sadece paylaşılan kişiler açabilir).
 
 ## Kodun modları
 
