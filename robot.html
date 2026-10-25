@@ -241,6 +241,8 @@
     justify-self: start; background: none; border: 0; padding: 0; color: var(--accent); cursor: pointer;
     font: 600 .84rem var(--font-body); text-decoration: underline; text-underline-offset: 3px;
   }
+  .v2link { display: inline-block; font-weight: 700; color: var(--accent); text-underline-offset: 3px; }
+  .grp a { color: var(--accent); }
   .codewrap { display: grid; grid-template-columns: 340px minmax(0, 1fr); gap: 20px; align-items: start; }
   .cfg { display: grid; gap: 12px; min-width: 0; }
   .grp { margin: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px 14px; display: grid; gap: 12px; min-width: 0; }
@@ -342,6 +344,7 @@
     <p class="eyebrow">Okul projesi · <span lang="en">Arduino UNO + L298N</span> + 4'lü kızılötesi sensör</p>
     <h1>Çizgi İzleyen Robot</h1>
     <p class="lede">Kitteki parçalarla kuracağınız robotun 3D modeli. Döndürüp inceleyebilir, parçalarını ayırabilir ya da pistte <code>cizgi_izleyen.ino</code> kodundaki kurallarla sürebilirsin.</p>
+    <p><a class="v2link" href="v2.html">Yarışma afişindeki gibi robot mu? Versiyon 2 sayfası →</a></p>
   </header>
 
   <section class="stage" aria-label="3D robot modeli">
@@ -811,7 +814,7 @@
       <p class="muted">Soldaki menüden ayarları değiştir; sağdaki kod anında güncellenir ve değişen satırlar işaretlenir. Hız ayarları yukarıdaki pist simülasyonuyla bağlı. Seçimlerin bu tarayıcıda saklanır.</p>
     </div>
     <div class="codewrap">
-      <form class="cfg" id="cfg" novalidate aria-label="Kod ayarları"></form>
+      <form class="cfg" id="cfg" novalidate aria-label="Kod ayarları"><fieldset class="grp"><legend>Hazır ayar</legend><div class="seg"><button type="button" class="btn" data-preset="v1">Versiyon 1</button><button type="button" class="btn" data-preset="v2">Versiyon 2 (afişteki)</button></div><small class="muted">Sadece TABAN_HIZ ve KP'yi değiştirir. <a href="v2.html">Versiyon 2 nedir?</a></small></fieldset></form>
       <div class="codebox">
         <div class="codebar">
           <span class="fname">cizgi_izleyen.ino</span>
@@ -1145,7 +1148,7 @@ void motorAdim(const __FlashStringHelper *yazi, int sol, int sag) {
 const AYAR = { TABAN_HIZ: 140, KP: 45, VIRAJ_FRENI: 10, ARAMA_HIZI: 150, MAKS_HIZ: 255, TUM_SIYAH_DUR: 400, KAYIP_DUR: 3000 };
 const AGIRLIK = [-3, -1, 1, 3];
 // Robot ölçüleri (cm) ve basit motor modeli
-const GEO = { wheelR: 3.3, wheelBase: 15.8, sensorX: [2.25, 0.75, -0.75, -2.25], sensorZ: 9.7, lineHalf: 0.95, maxV: 70, dead: 40, tau: 0.08 };
+const GEO = { wheelR: 3.3, wheelBase: 15.8, sensorX: [2.25, 0.75, -0.75, -2.25], sensorZ: 6.7, axleZ: 3.0, lineHalf: 0.95, maxV: 70, dead: 40, tau: 0.08 };
 
 function cizgiIzle(s, st, now) {
   let adet = 0;
@@ -1950,6 +1953,14 @@ function simStep(sim, tr, dt, bounds) {
     } catch (e) { fallback(); }
   });
   rowsEl.addEventListener('animationend', (ev) => ev.target.classList.remove('flash'));
+  const PRESETS = { v1: { TABAN_HIZ: 140, KP: 45 }, v2: { TABAN_HIZ: 130, KP: 30 } };
+  function applyPreset(name) {
+    Object.assign(cfg, PRESETS[name]);
+    applyAll('preset');
+    $('#copy-status').textContent = (name === 'v2' ? 'Versiyon 2' : 'Versiyon 1') + ' ayarları uygulandı: TABAN_HIZ ' + cfg.TABAN_HIZ + ', KP ' + cfg.KP + '.';
+  }
+  document.querySelectorAll('[data-preset]').forEach((b) => b.addEventListener('click', () => applyPreset(b.dataset.preset)));
+  if (location.hash === '#v2') { applyPreset('v2'); setTimeout(() => $('#kod').scrollIntoView(), 400); }
 
   // ---------------- 3D ----------------
   const PARTS = [
@@ -2094,7 +2105,7 @@ function simStep(sim, tr, dt, bounds) {
     senseNow();
 
     function applyPose() {
-      R.root.position.set(sim.x, 0, sim.z);
+      R.root.position.set(sim.x - Math.sin(sim.th) * GEO.axleZ, 0, sim.z - Math.cos(sim.th) * GEO.axleZ);
       R.root.rotation.y = sim.th;
       R.spin[1].rotation.x = sim.spinL;
       R.spin[-1].rotation.x = sim.spinR;
@@ -2522,11 +2533,11 @@ function simStep(sim, tr, dt, bounds) {
     spotGeo.rotateX(-Math.PI / 2);
     GEO.sensorX.forEach((x) => {
       box(1.05, 0.12, 3.2, M.pcbBlue, x, 1.41, 8.8, sg);
-      box(1.0, 0.65, 0.56, M.black, x, 1.025, GEO.sensorZ, sg);
+      box(1.0, 0.65, 0.56, M.black, x, 1.025, GEO.sensorZ + GEO.axleZ, sg);
       box(0.75, 0.25, 0.3, M.black, x, 1.6, 7.35, sg);
       leds.push(box(0.22, 0.1, 0.3, ledMat(), x, 1.52, 10.1, sg));
       const spot = new THREE.Mesh(spotGeo, new THREE.MeshBasicMaterial({ color: 0xff3340, transparent: true, opacity: 0.9 }));
-      spot.position.set(x, 0.04, GEO.sensorZ);
+      spot.position.set(x, 0.04, GEO.sensorZ + GEO.axleZ);
       spot.visible = false;
       sg.add(spot);
       spots.push(spot);

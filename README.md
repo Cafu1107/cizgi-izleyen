@@ -8,6 +8,7 @@ Okul projesi: kitteki parçalarla (Arduino UNO, L298N, 4'lü kızılötesi sens�
 |---|---|
 | [`cizgi_izleyen/cizgi_izleyen.ino`](cizgi_izleyen/cizgi_izleyen.ino) | Arduino kodu. Arduino IDE ile açıp karta yükle. |
 | [`robot.html`](robot.html) | 3D model, pist simülasyonu, ölçüler, kablolama şeması ve ayar menülü kod üretici (claude.ai sayfasının kaynağı). |
+| [`v2.html`](v2.html) | Versiyon 2: yarışma afişindeki yerleşim, farklar ve iki robotun yan yana simülasyonu. |
 | [`index.html`](index.html) | GitHub Pages sürümü. `robot.html` değişince `node tools/build-index.js` ile yeniden üret. |
 
 Sayfa: https://cafu1107.github.io/cizgi-izleyen/

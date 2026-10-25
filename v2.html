@@ -1,0 +1,476 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Çizgi İzleyen Robot v2</title>
+<meta name="description" content="Yarışma afişindeki gibi kurulan robot: ne değişir, ölçüler ve iki robotun yan yana simülasyonu.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=Atkinson+Hyperlegible+Next:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+  /* Same kit-manual system as the main page; v2 = comparison sheet */
+  :root {
+    --bg: #EEF1EF; --surface: #FFFFFF; --sunken: #E3E8E5; --fg: #141919; --muted: #56615E; --line: #CBD3CF;
+    --accent: #C62029; --accent-soft: rgba(198, 32, 41, .12); --on-accent: #FFFFFF; --v1: #2563EB;
+    --font-display: "Archivo", "Arial Narrow", system-ui, sans-serif;
+    --font-body: "Atkinson Hyperlegible Next", "Segoe UI", system-ui, sans-serif;
+    --font-mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+    color-scheme: light;
+    padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0F1314; --surface: #171D1E; --sunken: #1F2729; --fg: #E5EBE8; --muted: #98A4A0; --line: #2C3739;
+      --accent: #F0474F; --accent-soft: rgba(240, 71, 79, .16); --v1: #60A5FA; color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0F1314; --surface: #171D1E; --sunken: #1F2729; --fg: #E5EBE8; --muted: #98A4A0; --line: #2C3739;
+    --accent: #F0474F; --accent-soft: rgba(240, 71, 79, .16); --v1: #60A5FA; color-scheme: dark;
+  }
+  body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.55 var(--font-body); }
+  [hidden] { display: none !important; }
+  .page {
+    max-width: 1100px; margin: 0 auto; display: grid; gap: 56px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 32px 72px;
+  }
+  h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; margin: 0; }
+  h1 { font-size: clamp(2.1rem, 5.6vw, 3.8rem); font-weight: 820; font-stretch: 125%; line-height: 1; }
+  h2 { font-size: clamp(1.4rem, 3vw, 1.9rem); font-weight: 780; font-stretch: 112%; line-height: 1.1; }
+  p { margin: 0; }
+  a { color: var(--accent); text-underline-offset: 3px; }
+  code { font-family: var(--font-mono); font-size: .88em; }
+  .eyebrow { font: 600 .74rem/1.3 var(--font-mono); text-transform: uppercase; letter-spacing: .09em; color: var(--muted); }
+  .muted { color: var(--muted); }
+  .intro { display: grid; gap: 14px; max-width: 760px; }
+  .lede { font-size: 1.08rem; max-width: 64ch; }
+  .verdict {
+    display: grid; gap: 6px; background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--accent);
+    border-radius: 12px; padding: 16px 18px; max-width: 760px;
+  }
+  .verdict b { font-size: 1.05rem; }
+  .sec { display: grid; gap: 20px; }
+  .sec-head { display: grid; gap: 8px; max-width: 760px; }
+  .tbl { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
+  table { border-collapse: collapse; width: 100%; min-width: 560px; font-size: .92rem; }
+  th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  tr:last-child td { border-bottom: 0; }
+  thead th { font: 600 .74rem var(--font-mono); text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+  tbody th { font-weight: 700; white-space: nowrap; }
+  td.same { color: var(--muted); }
+  td.diff { background: var(--accent-soft); }
+  .tag { font: 600 .7rem var(--font-mono); padding: 2px 7px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); white-space: nowrap; }
+  .tag.d { border-color: var(--accent); color: var(--accent); }
+  .changes { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+  .changes li { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px; display: grid; gap: 6px; align-content: start; }
+  .changes h3 { font-size: 1.02rem; font-weight: 720; font-stretch: 105%; }
+  .changes p { font-size: .92rem; color: var(--muted); }
+  .preset { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .kv { font: 600 .95rem var(--font-mono); background: var(--sunken); border-radius: 8px; padding: 6px 10px; }
+  .btn {
+    font: 600 .88rem/1 var(--font-body); color: var(--fg); background: var(--surface); border: 1px solid var(--line);
+    border-radius: 8px; padding: .6rem .9rem; cursor: pointer; text-decoration: none; display: inline-block;
+  }
+  .btn.primary { background: var(--accent); color: var(--on-accent); border-color: transparent; }
+  .btn:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .scroll { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px; }
+  .scroll svg { display: block; width: 100%; min-width: 560px; height: auto; }
+  svg .t { fill: var(--fg); font-family: var(--font-body); font-size: 13px; }
+  svg .tm { fill: var(--muted); font-family: var(--font-body); font-size: 12px; }
+  svg .tn { fill: var(--fg); font-family: var(--font-mono); font-size: 12px; font-weight: 600; }
+  svg .o { fill: var(--surface); stroke: var(--fg); stroke-width: 1.4; }
+  svg .os { fill: var(--sunken); stroke: var(--fg); stroke-width: 1.2; }
+  svg .ln { stroke: var(--fg); stroke-width: 1.2; fill: none; }
+  svg .lm { stroke: var(--muted); stroke-width: 1; fill: none; }
+  svg .acc { fill: var(--accent); stroke: var(--accent); }
+  svg .beam { fill: none; stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 3 3; }
+  .simbox { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; display: grid; }
+  canvas { display: block; width: 100%; height: auto; background: #F6F6F2; }
+  .simctl { display: flex; flex-wrap: wrap; gap: 14px 20px; align-items: end; padding: 14px 16px; border-top: 1px solid var(--line); }
+  .ctl { display: grid; gap: 4px; min-width: 180px; flex: 1; }
+  .ctl label { display: flex; justify-content: space-between; font-weight: 600; font-size: .86rem; }
+  .ctl output { font: 600 .86rem var(--font-mono); color: var(--accent); }
+  input[type="range"] { width: 100%; accent-color: var(--accent); }
+  .laps { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; padding: 0 16px 16px; }
+  .laps div { border-radius: 8px; padding: 10px 12px; background: var(--sunken); display: grid; gap: 2px; }
+  .laps .k { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: .9rem; }
+  .laps i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+  .laps span { font: 500 .84rem var(--font-mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+  .note { font-size: .84rem; color: var(--muted); max-width: 75ch; }
+  @media (max-width: 760px) { .changes { grid-template-columns: minmax(0, 1fr); } }
+</style>
+</head>
+<body>
+<div class="page">
+  <header class="intro">
+    <p class="eyebrow"><a href="./">← Ana sayfa</a> · Versiyon 2</p>
+    <h1>Robot Versiyon 2</h1>
+    <p class="lede">Yarışma afişindeki robotun yerleşimi. Parçalar aynı kit; değişen, parçaların nereye takıldığı.</p>
+  </header>
+
+  <div class="verdict">
+    <b>Kısaca: kod ve kablolar aynı kalır, iki ayar ve yapım değişir.</b>
+    <p class="muted">Tekerlekler arkaya, sensörler ön kenara geçince sensörler aksın yaklaşık 14 cm önünde kalır (versiyon 1'de 6,7 cm). Robot virajı daha erken görür ama daha kolay zikzak çizer. Bu yüzden KP daha düşükten başlamalı.</p>
+  </div>
+
+  <section class="sec" aria-labelledby="fark-h">
+    <div class="sec-head"><p class="eyebrow">Karşılaştırma</p><h2 id="fark-h">Ne değişiyor?</h2></div>
+    <div class="tbl">
+      <table>
+        <thead><tr><th></th><th>Versiyon 1 (ana sayfadaki)</th><th>Versiyon 2 (afişteki)</th></tr></thead>
+        <tbody>
+          <tr><th>Tekerlekler</th><td>Önde</td><td class="diff">Arkada</td></tr>
+          <tr><th>Sarhoş teker</th><td>Arkada, döner teker</td><td class="diff">Önde, bilye teker</td></tr>
+          <tr><th>Sensörler</th><td>Ayrı çubukta, aksın ≈ 6,7 cm önünde</td><td class="diff">Alt plakanın ön kenarında, aksın ≈ 14 cm önünde</td></tr>
+          <tr><th>L298N</th><td>Ara katta, önde</td><td class="diff">Üst katta, arkada</td></tr>
+          <tr><th>Pil yuvası</th><td>Ara katta, arkada</td><td class="diff">Ara katta, ortada</td></tr>
+          <tr><th>Arduino, sensör kartı</th><td>Üst kat</td><td class="same">Aynı</td></tr>
+          <tr><th>Pinler, kablolama</th><td>Ana sayfadaki şema</td><td class="same">Aynı</td></tr>
+          <tr><th>Kod mantığı</th><td><code>cizgi_izleyen.ino</code></td><td class="same">Aynı</td></tr>
+          <tr><th>Başlangıç ayarı</th><td><code>TABAN_HIZ 140 · KP 45</code></td><td class="diff"><code>TABAN_HIZ 130 · KP 30</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="sec" aria-labelledby="yap-h">
+    <div class="sec-head"><p class="eyebrow">Yapım</p><h2 id="yap-h">Versiyon 2 için yapılacaklar</h2></div>
+    <ul class="changes">
+      <li><h3>Sensörler ön kenara</h3><p>4 sensörü alt plakanın ön kenarına, 15 mm arayla, yere bakacak şekilde dik tak. Sensör gözü yerden 5–10 mm olmalı; uzak kalırsa kısa aralayıcıyla aşağı indir.</p></li>
+      <li><h3>Bilye teker önde</h3><p>Bilye teker sensörlerin hemen arkasında dursun. Yüksekliği, tekerleklerin plakayı kaldırdığı yükseklikle aynı olmalı (≈ 4,4 cm); yoksa robot öne ya da arkaya yatar ve sensör yüksekliği bozulur.</p></li>
+      <li><h3>Tekerlekler arkada</h3><p>Motorları alt plakanın arka kısmına vidala. Arka ağırlaşırsa ön kalkar; pili ortaya koyarak dengele.</p></li>
+      <li><h3>L298N üst katta</h3><p>Üst katın arkasına koy, soğutucu açıkta kalsın. Motor kabloları uzar: plakadaki deliklerden geçir ve tekerleklere değmesin.</p></li>
+      <li><h3>Kod: iki ayar</h3><p>Sensör aksından uzak olunca robotun küçük bir dönüşü bile sensörleri çok kaydırır. KP'yi 30'dan başlat; düzde zikzak çizerse düşür, virajda kaçırırsa artır.</p></li>
+      <li><h3>Virajda kestirme</h3><p>Tekerlekler arkada olduğu için virajda arka taraf iç tarafa doğru kestirir (simülasyonda ≈ 4 cm, versiyon 1'de ≈ 1 cm). Yarışma kuralı "tekerlek çizgiden çıkamaz" diyorsa bunu hesaba kat.</p></li>
+    </ul>
+    <div class="preset">
+      <span class="kv">TABAN_HIZ = 130</span><span class="kv">KP = 30</span>
+      <a class="btn primary" href="./#v2">Bu ayarlarla kodu aç</a>
+      <span class="note">Ana sayfadaki Kod bölümünü bu ayarlarla açar.</span>
+    </div>
+  </section>
+
+  <section class="sec" aria-labelledby="olcu-h">
+    <div class="sec-head"><p class="eyebrow">Yandan görünüş · cm · tahmini</p><h2 id="olcu-h">Versiyon 2 yerleşimi</h2>
+      <p class="muted">Ölçüler afişten tahmin; kendi robotunu kurunca aks–sensör mesafesini cetvelle ölç.</p></div>
+    <div class="scroll">
+      <svg viewBox="0 0 680 280" role="img" aria-label="Versiyon 2 robotun yandan çizimi">
+        <rect x="20" y="220" width="370" height="3" style="fill:var(--fg)"/>
+        <rect class="o" x="40" y="144.8" width="320" height="4.8" rx="2"/>
+        <rect class="o" x="40" y="84" width="320" height="4.8" rx="2"/>
+        <rect class="os" x="59" y="88.8" width="10" height="56"/>
+        <rect class="os" x="331" y="88.8" width="10" height="56"/>
+        <rect class="o" x="152" y="117.6" width="96" height="27.2" rx="2"/>
+        <path class="lm" d="M156 131 H244"/>
+        <rect class="o" x="48" y="81.4" width="68.8" height="2.6"/>
+        <rect class="os" x="62.4" y="43" width="38.4" height="38.4"/>
+        <path class="lm" d="M68 47 V78 M74 47 V78 M80 47 V78 M86 47 V78 M92 47 V78"/>
+        <rect class="o" x="128" y="78.2" width="109.8" height="2.6"/>
+        <rect class="os" x="133" y="80.8" width="5" height="3.2"/><rect class="os" x="228" y="80.8" width="5" height="3.2"/>
+        <rect class="o" x="118.4" y="60.6" width="25.6" height="17.6"/>
+        <rect class="os" x="158" y="64" width="78" height="14.2"/>
+        <rect class="o" x="280" y="78.2" width="48" height="2.6"/>
+        <rect class="os" x="304" y="68" width="10.6" height="10.2"/>
+        <rect class="os" x="284" y="80.8" width="4" height="3.2"/><rect class="os" x="320" y="80.8" width="4" height="3.2"/>
+        <rect class="os" x="80" y="149.6" width="112" height="35.2" rx="3"/>
+        <circle class="o" cx="131.2" cy="168" r="52"/>
+        <circle class="ln" cx="131.2" cy="168" r="35"/>
+        <circle class="ln" cx="131.2" cy="168" r="8"/>
+        <path class="os" d="M298 149.6 H326 L322 186 H302 Z"/>
+        <circle class="o" cx="312" cy="200.8" r="19.2"/>
+        <rect class="os" x="352" y="149.6" width="6.4" height="49.6"/>
+        <rect class="acc" x="350.4" y="199.2" width="9.6" height="9.6"/>
+        <path class="beam" d="M355.2 208.8 V219"/>
+        <path class="lm" d="M131.2 226 V256 M355.2 226 V256 M131.2 248 H355.2"/>
+        <circle class="acc" cx="131.2" cy="168" r="2.5"/>
+        <text class="tn" x="243.2" y="268" text-anchor="middle">≈ 14 cm aks → sensör (v1: 6,7 cm)</text>
+        <path class="lm" d="M396 60 L330 70"/><text class="t" x="402" y="64">Üst: L298N (arka), Arduino, sensör kartı</text>
+        <path class="lm" d="M396 124 L250 128"/><text class="t" x="402" y="128">Ara kat: pil yuvası (ortada)</text>
+        <path class="lm" d="M396 170 L184 170"/><text class="t" x="402" y="174">Arka: motorlar ve tekerlekler</text>
+        <path class="lm" d="M396 204 L362 204"/><text class="t" x="402" y="208">Ön: bilye teker + 4 sensör</text>
+        <text class="tm" x="24" y="240">arka</text>
+        <text class="tm" x="388" y="240" text-anchor="end">ön →</text>
+      </svg>
+    </div>
+  </section>
+
+  <section class="sec" aria-labelledby="sim-h">
+    <div class="sec-head"><p class="eyebrow">Aynı kod, aynı ayar</p><h2 id="sim-h">İki robot aynı pistte</h2>
+      <p class="muted">Mavi versiyon 1, kırmızı versiyon 2. İkisi de <code>cizgi_izleyen.ino</code> kurallarıyla gidiyor; tek fark sensörlerin akstan uzaklığı. Arkalarında bıraktıkları iz, aksın geçtiği yol.</p></div>
+    <div class="simbox">
+      <canvas id="cmp" width="1000" height="640" aria-label="İki robotun pist simülasyonu"></canvas>
+      <div class="simctl">
+        <button class="btn primary" id="run" type="button">Başlat</button>
+        <button class="btn" id="reset" type="button">Sıfırla</button>
+        <div class="ctl"><label for="k-taban">TABAN_HIZ <output id="o-taban">130</output></label><input type="range" id="k-taban" min="60" max="255" step="1" value="130"></div>
+        <div class="ctl"><label for="k-kp">KP <output id="o-kp">30</output></label><input type="range" id="k-kp" min="0" max="120" step="1" value="30"></div>
+      </div>
+      <div class="laps">
+        <div><span class="k"><i style="background:var(--v1)"></i>Versiyon 1</span><span id="lap-0">Tur 0 · son tur —</span></div>
+        <div><span class="k"><i style="background:var(--accent)"></i>Versiyon 2</span><span id="lap-1">Tur 0 · son tur —</span></div>
+      </div>
+    </div>
+    <p class="note">Simülasyon motorları, zemini ve pili ideal kabul eder. Bu idealde ikisi de tur atar; gerçek robotta gecikme ve motor farkı olduğu için uzak sensörlü robot daha kolay salınır. Değerleri gerçek pistte KP'yi düşükten başlatarak ayarla.</p>
+  </section>
+</div>
+
+<script>
+(function () {
+  'use strict';
+// cizgi_izleyen.ino'daki ayarlar ve kurallar (birebir)
+const AYAR = { TABAN_HIZ: 140, KP: 45, VIRAJ_FRENI: 10, ARAMA_HIZI: 150, MAKS_HIZ: 255, TUM_SIYAH_DUR: 400, KAYIP_DUR: 3000 };
+const AGIRLIK = [-3, -1, 1, 3];
+// Robot ölçüleri (cm) ve basit motor modeli
+const GEO = { wheelR: 3.3, wheelBase: 15.8, sensorX: [2.25, 0.75, -0.75, -2.25], sensorZ: 9.7, lineHalf: 0.95, maxV: 70, dead: 40, tau: 0.08 };
+
+function cizgiIzle(s, st, now) {
+  let adet = 0;
+  for (let i = 0; i < 4; i++) if (s[i]) adet++;
+  const T = AYAR.TABAN_HIZ, A = AYAR.ARAMA_HIZI;
+  if (adet === 0) {
+    if (now - st.sonGorme > AYAR.KAYIP_DUR) return { sol: 0, sag: 0, kod: 'stop', hata: null };
+    if (st.sonHata < 0) return { sol: -A, sag: A, kod: 'araSol', hata: null };
+    if (st.sonHata > 0) return { sol: A, sag: -A, kod: 'araSag', hata: null };
+    return { sol: T, sag: T, kod: 'araDuz', hata: null };
+  }
+  st.sonGorme = now;
+  if (adet === 4) {
+    if (!st.tumSiyah) { st.tumSiyah = true; st.tumSiyahBaslangic = now; }
+    if (now - st.tumSiyahBaslangic > AYAR.TUM_SIYAH_DUR) return { sol: 0, sag: 0, kod: 'siyahDur', hata: null };
+    return { sol: T, sag: T, kod: 'kavsak', hata: null };
+  }
+  st.tumSiyah = false;
+  let toplam = 0;
+  for (let i = 0; i < 4; i++) if (s[i]) toplam += AGIRLIK[i];
+  const hata = toplam / adet;
+  st.sonHata = hata;
+  const taban = Math.trunc(T - AYAR.VIRAJ_FRENI * Math.abs(hata));
+  const duzeltme = Math.trunc(AYAR.KP * hata);
+  return { sol: taban + duzeltme, sag: taban - duzeltme, kod: 'izle', hata };
+}
+
+// Kapalı Catmull-Rom eğrisi, ~1 cm aralıkla örneklenir. Noktalar [x, z].
+function buildTrack(ctrl) {
+  const n = ctrl.length, dense = [];
+  for (let i = 0; i < n; i++) {
+    const p0 = ctrl[(i - 1 + n) % n], p1 = ctrl[i], p2 = ctrl[(i + 1) % n], p3 = ctrl[(i + 2) % n];
+    for (let k = 0; k < 60; k++) {
+      const t = k / 60, t2 = t * t, t3 = t2 * t;
+      const f = (a, b, c, d) => 0.5 * (2 * b + (-a + c) * t + (2 * a - 5 * b + 4 * c - d) * t2 + (-a + 3 * b - 3 * c + d) * t3);
+      dense.push([f(p0[0], p1[0], p2[0], p3[0]), f(p0[1], p1[1], p2[1], p3[1])]);
+    }
+  }
+  let L = 0;
+  const cum = [0];
+  for (let i = 1; i <= dense.length; i++) {
+    const a = dense[i - 1], b = dense[i % dense.length];
+    L += Math.hypot(b[0] - a[0], b[1] - a[1]);
+    cum.push(L);
+  }
+  const N = Math.round(L), pts = [];
+  let j = 0;
+  for (let k = 0; k < N; k++) {
+    const d = (k / N) * L;
+    while (cum[j + 1] < d) j++;
+    const a = dense[j], b = dense[(j + 1) % dense.length], u = (d - cum[j]) / (cum[j + 1] - cum[j] || 1);
+    pts.push([a[0] + (b[0] - a[0]) * u, a[1] + (b[1] - a[1]) * u]);
+  }
+  const tan = pts.map((p, k) => {
+    const a = pts[(k - 1 + N) % N], b = pts[(k + 1) % N], l = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    return [(b[0] - a[0]) / l, (b[1] - a[1]) / l];
+  });
+  return { pts, tan, N, len: L, band: { half: 1.0, across: 6 } };
+}
+
+function segDist(px, pz, a, b) {
+  const dx = b[0] - a[0], dz = b[1] - a[1];
+  const l2 = dx * dx + dz * dz;
+  let u = ((px - a[0]) * dx + (pz - a[1]) * dz) / l2;
+  u = u < 0 ? 0 : u > 1 ? 1 : u;
+  return Math.hypot(px - a[0] - dx * u, pz - a[1] - dz * u);
+}
+
+function onLine(tr, px, pz) {
+  const p0 = tr.pts[0], t0 = tr.tan[0];
+  const rx = px - p0[0], rz = pz - p0[1];
+  if (Math.abs(rx * t0[0] + rz * t0[1]) < tr.band.half && Math.abs(rx * -t0[1] + rz * t0[0]) < tr.band.across) return true;
+  for (let i = 0; i < tr.N; i++) {
+    if (segDist(px, pz, tr.pts[i], tr.pts[(i + 1) % tr.N]) < GEO.lineHalf) return true;
+  }
+  return false;
+}
+
+function newSim(tr) {
+  const k = tr.N - 30, p = tr.pts[k], t = tr.tan[k];
+  return {
+    x: p[0], z: p[1], th: Math.atan2(t[0], t[1]), vL: 0, vR: 0, t: 0, idx: k,
+    st: { sonHata: 0, sonGorme: 0, tumSiyah: false, tumSiyahBaslangic: 0 },
+    sens: [false, false, false, false], out: { sol: 0, sag: 0, kod: 'izle', hata: 0 },
+    spinL: 0, spinR: 0, lapStart: null, laps: [], fell: false
+  };
+}
+
+function sensorWorld(sim, i) {
+  const fx = Math.sin(sim.th), fz = Math.cos(sim.th), lx = Math.cos(sim.th), lz = -Math.sin(sim.th);
+  const sz = sim.sz || GEO.sensorZ;
+  return [sim.x + lx * GEO.sensorX[i] + fx * sz, sim.z + lz * GEO.sensorX[i] + fz * sz];
+}
+
+function simStep(sim, tr, dt, bounds) {
+  for (let i = 0; i < 4; i++) { const p = sensorWorld(sim, i); sim.sens[i] = onLine(tr, p[0], p[1]); }
+  const out = cizgiIzle(sim.sens, sim.st, sim.t * 1000);
+  sim.out = out;
+  const hedef = pwm => {
+    const p = Math.max(-AYAR.MAKS_HIZ, Math.min(AYAR.MAKS_HIZ, pwm));
+    return Math.abs(p) < GEO.dead ? 0 : GEO.maxV * p / 255;
+  };
+  const a = Math.min(1, dt / GEO.tau);
+  sim.vL += (hedef(out.sol) - sim.vL) * a;
+  sim.vR += (hedef(out.sag) - sim.vR) * a;
+  const v = (sim.vL + sim.vR) / 2, w = (sim.vR - sim.vL) / GEO.wheelBase;
+  sim.th += w * dt;
+  sim.x += Math.sin(sim.th) * v * dt;
+  sim.z += Math.cos(sim.th) * v * dt;
+  sim.spinL += sim.vL * dt / GEO.wheelR;
+  sim.spinR += sim.vR * dt / GEO.wheelR;
+  sim.t += dt;
+  // Tur sayacı: robotun pistteki en yakın noktası başlangıç çizgisini geçti mi
+  let best = sim.idx, bd = 1e9;
+  for (let k = -25; k <= 25; k++) {
+    const j = (sim.idx + k + tr.N) % tr.N, p = tr.pts[j];
+    const d = (p[0] - sim.x) ** 2 + (p[1] - sim.z) ** 2;
+    if (d < bd) { bd = d; best = j; }
+  }
+  if (sim.idx > tr.N * 0.8 && best < tr.N * 0.2) {
+    if (sim.lapStart !== null) sim.laps.push(sim.t - sim.lapStart);
+    sim.lapStart = sim.t;
+  }
+  sim.idx = best;
+  if (bounds && (Math.abs(sim.x - bounds.cx) > bounds.hw || Math.abs(sim.z - bounds.cz) > bounds.hh)) sim.fell = true;
+}
+
+  const $ = (s) => document.querySelector(s);
+  const TRACK = buildTrack([
+    [-70, -40], [-20, -46], [30, -44], [70, -36], [84, -12], [72, 10], [48, 14], [34, 32], [10, 44],
+    [-16, 38], [-26, 16], [-44, 8], [-66, 18], [-84, 4], [-84, -24]
+  ]);
+  AYAR.TABAN_HIZ = 130; AYAR.KP = 30;
+  // Robot çizimleri: aks merkezine göre (cm). x: sol +, z: ileri +
+  const BOTS = [
+    { sz: 6.7, color: '#2563EB', plate: [-11.8, 5.8] },
+    { sz: 14.0, color: '#C62029', plate: [-5.7, 14.3] }
+  ];
+  let sims, trails, running = false, acc = 0, last = performance.now();
+  function reset() {
+    sims = BOTS.map((b) => Object.assign(newSim(TRACK), { sz: b.sz }));
+    trails = BOTS.map(() => []);
+    sims.forEach((s) => { for (let i = 0; i < 4; i++) { const p = sensorWorld(s, i); s.sens[i] = onLine(TRACK, p[0], p[1]); } });
+    acc = 0;
+    updateLaps(true);
+  }
+
+  let x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9;
+  TRACK.pts.forEach((p) => { x0 = Math.min(x0, p[0]); x1 = Math.max(x1, p[0]); z0 = Math.min(z0, p[1]); z1 = Math.max(z1, p[1]); });
+  const M = 16;
+  const cv = $('#cmp'), ctx = cv.getContext('2d');
+  let S = 1, OX = 0, OY = 0;
+  function resize() {
+    const w = cv.clientWidth || 800, dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const h = Math.round(w * (z1 - z0 + 2 * M) / (x1 - x0 + 2 * M));
+    cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+    S = (cv.width) / (x1 - x0 + 2 * M);
+    OX = (M - x0) * S; OY = (M - z0) * S;
+  }
+  const P = (x, z) => [OX + x * S, OY + z * S];
+
+  function drawBot(sim, b) {
+    const fx = Math.sin(sim.th), fz = Math.cos(sim.th), lx = Math.cos(sim.th), lz = -Math.sin(sim.th);
+    const W = (a, c) => P(sim.x + lx * a + fx * c, sim.z + lz * a + fz * c);
+    const poly = (pts, fill, stroke) => {
+      ctx.beginPath();
+      pts.forEach((p, i) => { const q = W(p[0], p[1]); if (i) ctx.lineTo(q[0], q[1]); else ctx.moveTo(q[0], q[1]); });
+      ctx.closePath();
+      if (fill) { ctx.fillStyle = fill; ctx.fill(); }
+      if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = Math.max(1, S * 0.25); ctx.stroke(); }
+    };
+    const [r0, r1] = b.plate;
+    ctx.globalAlpha = 0.82;
+    poly([[6, r0], [-6, r0], [-6, r1], [6, r1]], b.color, null);
+    ctx.globalAlpha = 1;
+    [1, -1].forEach((s) => poly([[s * 6.6, -3.25], [s * 9.2, -3.25], [s * 9.2, 3.25], [s * 6.6, 3.25]], '#222', null));
+    GEO.sensorX.forEach((sx, i) => {
+      const q = W(sx, sim.sz);
+      ctx.beginPath(); ctx.arc(q[0], q[1], Math.max(2, S * 0.6), 0, Math.PI * 2);
+      ctx.fillStyle = sim.sens[i] ? '#FFD23F' : '#FFFFFF'; ctx.fill();
+      ctx.strokeStyle = '#111'; ctx.lineWidth = 1; ctx.stroke();
+    });
+  }
+
+  function draw() {
+    ctx.fillStyle = '#F6F6F2'; ctx.fillRect(0, 0, cv.width, cv.height);
+    ctx.strokeStyle = '#151515'; ctx.lineWidth = GEO.lineHalf * 2 * S; ctx.lineJoin = 'round';
+    ctx.beginPath();
+    TRACK.pts.forEach((p, i) => { const q = P(p[0], p[1]); if (i) ctx.lineTo(q[0], q[1]); else ctx.moveTo(q[0], q[1]); });
+    ctx.closePath(); ctx.stroke();
+    const p0 = TRACK.pts[0], t0 = TRACK.tan[0];
+    ctx.lineWidth = TRACK.band.half * 2 * S;
+    ctx.beginPath();
+    let a = P(p0[0] - t0[1] * 6, p0[1] + t0[0] * 6), c = P(p0[0] + t0[1] * 6, p0[1] - t0[0] * 6);
+    ctx.moveTo(a[0], a[1]); ctx.lineTo(c[0], c[1]); ctx.stroke();
+    trails.forEach((tr, i) => {
+      if (tr.length < 2) return;
+      ctx.strokeStyle = BOTS[i].color; ctx.globalAlpha = 0.55; ctx.lineWidth = Math.max(1.5, S * 0.35);
+      ctx.beginPath();
+      tr.forEach((p, k) => { const q = P(p[0], p[1]); if (k) ctx.lineTo(q[0], q[1]); else ctx.moveTo(q[0], q[1]); });
+      ctx.stroke(); ctx.globalAlpha = 1;
+    });
+    sims.forEach((s, i) => drawBot(s, BOTS[i]));
+  }
+
+  const fmt = (n) => n.toLocaleString('tr-TR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  let shown = [-1, -1];
+  function updateLaps(force) {
+    sims.forEach((s, i) => {
+      if (!force && s.laps.length === shown[i]) return;
+      shown[i] = s.laps.length;
+      const lastLap = s.laps.length ? fmt(s.laps[s.laps.length - 1]) + ' sn' : '—';
+      $('#lap-' + i).textContent = 'Tur ' + s.laps.length + ' · son tur ' + lastLap;
+    });
+  }
+
+  function frame(now) {
+    requestAnimationFrame(frame);
+    const dt = Math.min(0.05, (now - last) / 1000);
+    last = now;
+    if (running) {
+      acc += dt;
+      let n = 0;
+      while (acc >= 1 / 240 && n < 60) {
+        sims.forEach((s, i) => {
+          simStep(s, TRACK, 1 / 240, null);
+          const tr = trails[i];
+          if (!tr.length || Math.hypot(tr[tr.length - 1][0] - s.x, tr[tr.length - 1][1] - s.z) > 1) { tr.push([s.x, s.z]); if (tr.length > 900) tr.shift(); }
+        });
+        acc -= 1 / 240; n++;
+      }
+      updateLaps(false);
+    }
+    draw();
+  }
+
+  $('#run').addEventListener('click', () => { running = !running; $('#run').textContent = running ? 'Durdur' : 'Başlat'; });
+  $('#reset').addEventListener('click', () => { running = false; $('#run').textContent = 'Başlat'; reset(); });
+  [['k-taban', 'o-taban', 'TABAN_HIZ'], ['k-kp', 'o-kp', 'KP']].forEach(([id, out, key]) => {
+    const el = $('#' + id);
+    el.addEventListener('input', () => { AYAR[key] = +el.value; $('#' + out).textContent = el.value; });
+  });
+  reset();
+  resize();
+  window.addEventListener('resize', resize);
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
